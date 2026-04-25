@@ -1,0 +1,342 @@
+---
+title: "TypeScript types exported by @formbox/renderer"
+description: "Reference for FhirVersion, QuestionnaireOf, QuestionnaireResponseOf, LaunchContext, RenderMode, and all other types exported from @formbox/renderer."
+---
+
+`@formbox/renderer` re-exports all public TypeScript types you need to build strongly-typed integrations. Types originate from three internal packages — `@formbox/fhir`, `@formbox/theme`, and the renderer's own `types.ts` — and are surfaced through a single import path so you don't need to depend on those packages directly.
+
+```ts
+import type {
+  FhirVersion,
+  QuestionnaireOf,
+  QuestionnaireResponseOf,
+  LaunchContext,
+  RenderMode,
+  // ... and more
+} from "@formbox/renderer";
+```
+
+---
+
+## Core types
+
+### `FhirVersion`
+
+```ts
+type FhirVersion = "r4" | "r5";
+```
+
+The union of supported FHIR specification versions. Pass this as the generic type parameter `V` to version-scoped types, or pass a literal `"r4"` / `"r5"` to the `fhirVersion` prop.
+
+```ts
+import type { FhirVersion } from "@formbox/renderer";
+
+function buildForm<V extends FhirVersion>(version: V) { /* ... */ }
+```
+
+---
+
+### `QuestionnaireOf<V>`
+
+```ts
+type QuestionnaireOf<V extends FhirVersion> =
+  V extends "r4" ? import("fhir/r4").Questionnaire
+                 : import("fhir/r5").Questionnaire;
+```
+
+A version-scoped FHIR Questionnaire resource type. When you pass `fhirVersion="r4"` to `Renderer`, TypeScript infers `V = "r4"` and requires `questionnaire` to be an R4 `Questionnaire`. The same applies for `"r5"`.
+
+<Tabs>
+  <Tab title="R5">
+    ```ts
+    import type { QuestionnaireOf } from "@formbox/renderer";
+
+    const q: QuestionnaireOf<"r5"> = {
+      resourceType: "Questionnaire",
+      status: "active",
+      item: [{ linkId: "q1", text: "Name", type: "string" }],
+    };
+    ```
+  </Tab>
+  <Tab title="R4">
+    ```ts
+    import type { QuestionnaireOf } from "@formbox/renderer";
+
+    const q: QuestionnaireOf<"r4"> = {
+      resourceType: "Questionnaire",
+      status: "active",
+      item: [{ linkId: "q1", text: "Name", type: "string" }],
+    };
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+### `QuestionnaireResponseOf<V>`
+
+```ts
+type QuestionnaireResponseOf<V extends FhirVersion> =
+  V extends "r4" ? import("fhir/r4").QuestionnaireResponse
+                 : import("fhir/r5").QuestionnaireResponse;
+```
+
+A version-scoped FHIR QuestionnaireResponse resource type. This is the type of the value passed to `onChange`, `onSubmit`, and `defaultQuestionnaireResponse`.
+
+```ts
+import type { QuestionnaireResponseOf } from "@formbox/renderer";
+
+function handleResponse(response: QuestionnaireResponseOf<"r5">) {
+  console.log(response.status); // "in-progress" | "completed" | ...
+  console.log(response.item);   // QuestionnaireResponseItem[]
+}
+```
+
+---
+
+### `LaunchContext`
+
+```ts
+type LaunchContext = Record<string, unknown>;
+```
+
+An open map of named resources passed to the renderer's `launchContext` prop. Values are exposed to FHIRPath expressions in the questionnaire via the `%launchContext` variable. Keys are the names declared in the questionnaire's `launchContext` extension.
+
+```ts
+import type { LaunchContext } from "@formbox/renderer";
+
+const ctx: LaunchContext = {
+  patient: { resourceType: "Patient", id: "pt-1", name: [{ text: "Jane" }] },
+  encounter: { resourceType: "Encounter", id: "enc-9" },
+};
+```
+
+---
+
+### `RenderMode`
+
+```ts
+type RenderMode = "capture" | "display";
+```
+
+Controls whether the renderer produces an editable form or a read-only view.
+
+| Value | Behaviour |
+|-------|-----------|
+| `"capture"` | Editable inputs, validation, submit button visible |
+| `"display"` | Read-only view; inputs and submit are hidden or disabled |
+
+```ts
+import type { RenderMode } from "@formbox/renderer";
+
+const mode: RenderMode = "display";
+```
+
+---
+
+### `QuestionnaireUsageMode`
+
+```ts
+type QuestionnaireUsageMode =
+  | "capture-display"
+  | "capture"
+  | "display"
+  | "display-non-empty"
+  | "capture-display-non-empty";
+```
+
+Maps to the `http://hl7.org/fhir/StructureDefinition/questionnaire-usageMode` extension on individual questionnaire items. The renderer uses this to determine item-level visibility rules independently of the top-level `RenderMode`.
+
+| Value | Description |
+|-------|-------------|
+| `"capture"` | Show only when capturing data |
+| `"display"` | Show only in display/read mode |
+| `"capture-display"` | Show in both modes |
+| `"display-non-empty"` | Show in display mode only when the item has a value |
+| `"capture-display-non-empty"` | Show in both modes only when the item has a value |
+
+---
+
+## Adapter classes
+
+### `R4Adapter`
+
+```ts
+import { R4Adapter } from "@formbox/renderer";
+```
+
+A concrete implementation of `IFhirAdapter` for FHIR R4. Wraps the R4 attachment, questionnaire item, and questionnaire response adapters from `@formbox/fhir`. The renderer instantiates this class internally when `fhirVersion="r4"`. Export it if you need access to R4-specific adapter logic outside the renderer.
+
+```ts
+const adapter = new R4Adapter();
+adapter.version;                         // "r4"
+adapter.getDefaultTerminologyServer();   // "https://tx.fhir.org/r4"
+```
+
+### `R5Adapter`
+
+```ts
+import { R5Adapter } from "@formbox/renderer";
+```
+
+A concrete implementation of `IFhirAdapter` for FHIR R5. The R5 adapter is a pass-through — it reads and writes FHIR R5 fields as-is. The renderer instantiates this class internally when `fhirVersion="r5"`.
+
+```ts
+const adapter = new R5Adapter();
+adapter.version;                         // "r5"
+adapter.getDefaultTerminologyServer();   // "https://tx.fhir.org/r5"
+```
+
+---
+
+## Versioned FHIR data types
+
+The following types are re-exported from `@formbox/fhir`. Each is a conditional type parameterised on `FhirVersion` that resolves to the appropriate R4 or R5 type.
+
+<AccordionGroup>
+  <Accordion title="QuestionnaireItemOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireItemOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireItem
+                     : import("fhir/r5").QuestionnaireItem;
+    ```
+    A single item (question, group, or display) within a Questionnaire.
+  </Accordion>
+
+  <Accordion title="QuestionnaireResponseItemOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireResponseItemOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireResponseItem
+                     : import("fhir/r5").QuestionnaireResponseItem;
+    ```
+    A single response item within a QuestionnaireResponse.
+  </Accordion>
+
+  <Accordion title="QuestionnaireResponseItemAnswerOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireResponseItemAnswerOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireResponseItemAnswer
+                     : import("fhir/r5").QuestionnaireResponseItemAnswer;
+    ```
+    A single answer within a QuestionnaireResponseItem.
+  </Accordion>
+
+  <Accordion title="QuestionnaireItemAnswerOptionOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireItemAnswerOptionOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireItemAnswerOption
+                     : import("fhir/r5").QuestionnaireItemAnswerOption;
+    ```
+    An answer option defined on a questionnaire item.
+  </Accordion>
+
+  <Accordion title="QuestionnaireItemEnableWhenOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireItemEnableWhenOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireItemEnableWhen
+                     : import("fhir/r5").QuestionnaireItemEnableWhen;
+    ```
+    An `enableWhen` condition on a questionnaire item.
+  </Accordion>
+
+  <Accordion title="QuestionnaireItemInitialOf&lt;V&gt;">
+    ```ts
+    type QuestionnaireItemInitialOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").QuestionnaireItemInitial
+                     : import("fhir/r5").QuestionnaireItemInitial;
+    ```
+    An initial value on a questionnaire item.
+  </Accordion>
+
+  <Accordion title="AttachmentOf&lt;V&gt;">
+    ```ts
+    type AttachmentOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Attachment
+                     : import("fhir/r5").Attachment;
+    ```
+    A FHIR Attachment data type (used by file-upload questions).
+  </Accordion>
+
+  <Accordion title="CodingOf&lt;V&gt;">
+    ```ts
+    type CodingOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Coding
+                     : import("fhir/r5").Coding;
+    ```
+    A FHIR Coding data type (used by coding questions and answer options).
+  </Accordion>
+
+  <Accordion title="ElementOf&lt;V&gt;">
+    ```ts
+    type ElementOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Element
+                     : import("fhir/r5").Element;
+    ```
+    The base FHIR Element type.
+  </Accordion>
+
+  <Accordion title="ExtensionOf&lt;V&gt;">
+    ```ts
+    type ExtensionOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Extension
+                     : import("fhir/r5").Extension;
+    ```
+    A FHIR Extension data type.
+  </Accordion>
+
+  <Accordion title="QuantityOf&lt;V&gt;">
+    ```ts
+    type QuantityOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Quantity
+                     : import("fhir/r5").Quantity;
+    ```
+    A FHIR Quantity data type (used by quantity questions).
+  </Accordion>
+
+  <Accordion title="ReferenceOf&lt;V&gt;">
+    ```ts
+    type ReferenceOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").Reference
+                     : import("fhir/r5").Reference;
+    ```
+    A FHIR Reference data type (used by reference questions).
+  </Accordion>
+
+  <Accordion title="OperationOutcomeIssueOf&lt;V&gt;">
+    ```ts
+    type OperationOutcomeIssueOf<V extends FhirVersion> =
+      V extends "r4" ? import("fhir/r4").OperationOutcomeIssue
+                     : import("fhir/r5").OperationOutcomeIssue;
+    ```
+    A FHIR OperationOutcomeIssue (used to represent validation errors).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Also exported
+
+### `Strings`
+
+```ts
+import type { Strings } from "@formbox/renderer";
+```
+
+The complete UI strings type required by the controlled `Renderer`. Re-exported from `@formbox/theme`. See the [Controlled Renderer](/api/controlled-renderer) page for details.
+
+### `FhirTypesByVersion`
+
+```ts
+type FhirTypesByVersion = {
+  r4: typeof import("fhir/r4");
+  r5: typeof import("fhir/r5");
+};
+```
+
+A convenience map type that lets you index the full R4 or R5 type namespace by `FhirVersion`. Useful when writing generic utilities that operate on version-specific FHIR module types.
+
+```ts
+import type { FhirVersion, FhirTypesByVersion } from "@formbox/renderer";
+
+type CodingFor<V extends FhirVersion> = FhirTypesByVersion[V]["Coding"];
+```

@@ -1,133 +1,82 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Formbox Renderer: FHIR Questionnaire renderer for React"
+description: "Render HL7® FHIR® R4 and R5 Questionnaires as interactive React forms. Headless architecture — you supply the theme and CSS styling."
 ---
 
-## Setting up
+Formbox Renderer is a headless React library that turns HL7® FHIR® Questionnaire resources into fully interactive forms. It handles form state, validation, conditional logic (`enableWhen`), calculated expressions, ValueSet expansion, and repeating groups — you supply the theme and CSS.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the renderer and render your first FHIR Questionnaire in under five minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Using themes" icon="palette" href="/guides/themes">
+    Choose from four built-in themes or bring your own with the pluggable theme contract.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Renderer props" icon="code" href="/api/renderer-props">
+    Full reference for every prop accepted by the `Renderer` component.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Building a theme" icon="brush" href="/themes/building-a-theme">
+    Implement the Theme contract to create a fully custom look and feel.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What Formbox Renderer does
 
-Everything you need to create world-class documentation.
+Formbox Renderer takes a FHIR Questionnaire resource and produces a live, interactive form. The renderer is **headless**: it owns all form logic but delegates every DOM element and style decision to a theme object you provide.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="FHIR R4 & R5" icon="hospital">
+    Supports both FHIR R4 and R5 Questionnaire and QuestionnaireResponse resources.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="SDC extensions" icon="layer-group">
+    Evaluates `enableWhen`, calculated values, `launchContext`, and constraint expressions via FHIRPath.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Pluggable themes" icon="swatchbook">
+    Swap in hs-theme, nshuk-theme, antd-theme, mantine-theme, or build your own.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="ValueSet expansion" icon="list">
+    Expands ValueSets via a terminology server — defaults to `tx.fhir.org`.
   </Card>
-</Columns>
+  <Card title="TypeScript-first" icon="brackets-curly">
+    Versioned FHIR type helpers (`QuestionnaireOf<"r5">`) catch mismatches at compile time.
+  </Card>
+  <Card title="Multilingual" icon="language">
+    Switch questionnaire language at runtime; theme strings are fully localizable.
+  </Card>
+</CardGroup>
 
-## Make your content agent ready
+## Get started
 
-Make your docs work for humans and AI agents alike.
+<Steps>
+  <Step title="Install the package and a theme">
+    ```bash
+    npm install @formbox/renderer @formbox/hs-theme
+    ```
+  </Step>
+  <Step title="Import the renderer and theme">
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { theme } from "@formbox/hs-theme";
+    import "@formbox/hs-theme/style.css";
+    ```
+  </Step>
+  <Step title="Render your questionnaire">
+    ```tsx
+    const questionnaire = {
+      resourceType: "Questionnaire",
+      item: [
+        { linkId: "name", text: "Full name", type: "string", required: true },
+        { linkId: "dob", text: "Date of birth", type: "date" },
+      ],
+    };
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
+    export function PatientForm() {
+      return (
+        <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+      );
+    }
+    ```
+  </Step>
+</Steps>
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+See the [Quickstart guide](/quickstart) for a full walkthrough including submit handling and response capture.

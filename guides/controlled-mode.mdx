@@ -1,0 +1,162 @@
+---
+title: "Controlled mode for language and strings management"
+description: "Use the controlled renderer from @formbox/renderer/controlled to manage language and UI strings externally, keeping them in sync with your app state."
+---
+
+By default, `Renderer` from `@formbox/renderer` manages language selection and UI strings internally. It reads the initial language from `questionnaire.language` or the `defaultLanguage` prop and resolves the matching strings bundle automatically. For most apps this is the right choice.
+
+The **controlled renderer** (`@formbox/renderer/controlled`) moves that responsibility to you. You pass `language` and `strings` as explicit props, which means your application state directly drives what language the form shows and what text appears in UI controls. This is useful when your app already manages locale state globally — for example, in an i18n context — and you want the form to stay synchronized without any internal state.
+
+## Uncontrolled vs controlled
+
+| | Uncontrolled (`@formbox/renderer`) | Controlled (`@formbox/renderer/controlled`) |
+|---|---|---|
+| Language state | Managed internally | You supply via `language` prop |
+| Strings | Resolved automatically from `@formbox/strings` | You supply via `strings` prop |
+| Language switching | Internal; fires `onLanguageChange` as a side effect | External; re-render with a new `language` + `strings` |
+| Typical use case | Most apps | Apps with global locale management |
+
+## Installation
+
+The controlled renderer is part of `@formbox/renderer`. No additional package is needed. Strings come from `@formbox/strings`.
+
+<CodeGroup>
+  ```bash npm
+  npm install @formbox/renderer @formbox/strings @formbox/hs-theme
+  ```
+  ```bash pnpm
+  pnpm add @formbox/renderer @formbox/strings @formbox/hs-theme
+  ```
+  ```bash yarn
+  yarn add @formbox/renderer @formbox/strings @formbox/hs-theme
+  ```
+</CodeGroup>
+
+## Basic usage
+
+<Steps>
+  <Step title="Import the controlled renderer and a strings locale">
+    ```ts
+    import Renderer from "@formbox/renderer/controlled";
+    import en from "@formbox/strings/en";
+    ```
+
+    Each locale is a separate deep-import so your bundler can tree-shake unneeded locales.
+  </Step>
+  <Step title="Pass language and strings as props">
+    ```tsx
+    import { useState } from "react";
+    import Renderer from "@formbox/renderer/controlled";
+    import en from "@formbox/strings/en";
+    import { theme } from "@formbox/hs-theme";
+    import "@formbox/hs-theme/style.css";
+
+    export function PatientForm({ questionnaire, response }) {
+      const [language, setLanguage] = useState("en");
+
+      return (
+        <Renderer
+          fhirVersion="r5"
+          questionnaire={questionnaire}
+          defaultQuestionnaireResponse={response}
+          language={language}
+          strings={en}
+          onChange={(updated) => console.log(updated)}
+          onLanguageChange={setLanguage}
+          theme={theme}
+        />
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+## Props reference
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| `fhirVersion` | `"r4" \| "r5"` | Yes | FHIR version for Questionnaire parsing. |
+| `questionnaire` | `QuestionnaireOf<V>` | Yes | FHIR Questionnaire resource. |
+| `theme` | `Theme` | Yes | Theme contract implementation. |
+| `strings` | `Strings` | Yes | UI strings for the current language. |
+| `language` | `string` | No | Current language tag (e.g. `"en"`, `"fi"`). |
+| `defaultQuestionnaireResponse` | `QuestionnaireResponseOf<V>` | No | Initial response to seed answers. |
+| `onChange` | `(response: QuestionnaireResponseOf<V>) => void` | No | Called on every response change. |
+| `onSubmit` | `(response: QuestionnaireResponseOf<V>) => void` | No | Called after validation passes. |
+| `onLanguageChange` | `(language: string) => void` | No | Called when the user selects a different language. |
+| `terminologyServerUrl` | `string` | No | Base URL for ValueSet `$expand` requests. |
+| `launchContext` | `Record<string, unknown>` | No | Named resources exposed to expressions. |
+
+## Switching languages at runtime
+
+When the user picks a different language, update both `language` and `strings` together. The renderer rerenders with the new values.
+
+```tsx
+import { useState } from "react";
+import Renderer from "@formbox/renderer/controlled";
+import fi from "@formbox/strings/fi";
+import en from "@formbox/strings/en";
+import type { Strings } from "@formbox/renderer";
+
+const locales: Record<string, Strings> = { en, fi };
+
+export function PatientForm({ questionnaire }) {
+  const [language, setLanguage] = useState("en");
+  const strings = locales[language] ?? en;
+
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      language={language}
+      strings={strings}
+      onLanguageChange={setLanguage}
+      theme={theme}
+    />
+  );
+}
+```
+
+<Note>
+  The `Strings` type is exported from `@formbox/renderer` and is identical to `Strings` from `@formbox/theme`. Every locale file in `@formbox/strings` satisfies this type.
+</Note>
+
+## Resetting the form
+
+Directly controlling the `QuestionnaireResponse` value is not yet supported. If you need to apply a new response — for example, after loading data — use React's `key` prop to remount the renderer with a fresh internal state.
+
+```tsx
+<Renderer
+  key={responseId}
+  fhirVersion="r5"
+  questionnaire={questionnaire}
+  defaultQuestionnaireResponse={response}
+  language={language}
+  strings={strings}
+  theme={theme}
+/>
+```
+
+Changing `key` unmounts and remounts the renderer, discarding all in-progress edits and seeding from `defaultQuestionnaireResponse`.
+
+<Warning>
+  Changing `key` discards all unsaved user input. Only do this when you intentionally want to reset the form.
+</Warning>
+
+## Available locales in @formbox/strings
+
+`@formbox/strings` ships built-in translations for: `de`, `en`, `es`, `fi`, `fr`, `it`, `nl`, `pl`, `pt`, `ru`, `sv`, `tr`.
+
+Import a single locale:
+
+```ts
+import fr from "@formbox/strings/fr";
+```
+
+Or import all locales as a bundle and look up by language tag:
+
+```ts
+import strings from "@formbox/strings";
+
+const locale = strings["fr"] ?? strings["en"];
+```

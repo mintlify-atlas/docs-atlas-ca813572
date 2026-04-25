@@ -1,0 +1,380 @@
+---
+title: "Theme Contract: Selection and File Input Components"
+description: "Prop reference for SelectInput, RadioButtonList, CheckboxList, MultiSelectInput, OptionDisplay, CustomOptionForm, and FileInput theme contract slots."
+---
+
+Selection components let users choose from option lists provided by the renderer. The renderer manages option loading, token stability, and legacy disabled entries. Your components handle layout, keyboard interaction, and accessibility roles. File and signature inputs are also documented here since they share the attachment data model.
+
+<Note>
+  Option tokens are stable across renders. Use them as React keys. `SelectedOptionItem.label` may not match the current options list — render it as provided rather than looking it up.
+</Note>
+
+---
+
+## SelectInput
+
+Single-select dropdown for option lists. Render a native `<select>` or a custom combobox/listbox. When `specifyOtherOption` is present, render it as an extra option at the end of the list.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the select element `id`. The renderer always provides this for option-backed controls; use it on the primary focusable element and wire any combobox/listbox `id` attributes from it.
+    </ParamField>
+    <ParamField path="options" type="OptionItem[]" required>
+      Render these entries as selectable options. May include disabled legacy entries — treat them as normal options but disabled.
+    </ParamField>
+    <ParamField path="onChange" type="(token?: string) => void" required>
+      Call with the newly selected option token, or `undefined` when the selection is cleared.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the select element.
+    </ParamField>
+    <ParamField path="selectedOption" type="SelectedOptionItem">
+      Currently selected option. When `undefined`, no option is selected.
+    </ParamField>
+    <ParamField path="onSearch" type="(query: string) => void">
+      Call with the search query when the user types into a searchable select control.
+    </ParamField>
+    <ParamField path="specifyOtherOption" type="OptionItem">
+      When provided, render this as an extra option (for example, "Specify other"). When the user selects it, the renderer enters custom-entry state and provides `customOptionForm`.
+    </ParamField>
+    <ParamField path="customOptionForm" type="ReactNode">
+      Present only while custom-option entry is active. Render it near or in place of the options list. Use `CustomOptionForm` for the submit/cancel layout.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the select element.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the select disabled and prevent changes.
+    </ParamField>
+    <ParamField path="isLoading" type="boolean">
+      When `true`, show a loading indicator or disable option interactions. The renderer may also render `OptionsLoading` separately — avoid duplicating spinners.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when no option is selected.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## RadioButton
+
+Single radio input for table/grid selections or custom radio layouts. When used in a group, share the same `groupName` across all options.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the radio input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="groupName" type="string" required>
+      Use as the radio input `name` attribute to keep options mutually exclusive.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Set as the radio input `value`.
+    </ParamField>
+    <ParamField path="checked" type="boolean" required>
+      Render the radio as selected when `true`.
+    </ParamField>
+    <ParamField path="onChange" type="() => void" required>
+      Call when the user selects this radio option.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the radio input.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the radio input.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the radio disabled and prevent selection.
+    </ParamField>
+    <ParamField path="label" type="ReactNode">
+      Optional inline label content to render alongside the radio input.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## RadioButtonList
+
+Single-select option list presented as a group of radio buttons. Include disabled legacy options when provided.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Use as the radio group `name` and container `id` to keep options grouped.
+    </ParamField>
+    <ParamField path="options" type="OptionItem[]" required>
+      Render these entries as radio options.
+    </ParamField>
+    <ParamField path="onChange" type="(token?: string) => void" required>
+      Call with the newly selected option token, or `undefined` when the selection is cleared.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the group container.
+    </ParamField>
+    <ParamField path="selectedOption" type="SelectedOptionItem">
+      Currently selected option. When `undefined`, no option is selected.
+    </ParamField>
+    <ParamField path="specifyOtherOption" type="OptionItem">
+      When provided, render this as an extra option. When selected, the renderer provides `customOptionForm`.
+    </ParamField>
+    <ParamField path="customOptionForm" type="ReactNode">
+      Present only while custom-option entry is active. Render near the options list.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the group container.
+    </ParamField>
+    <ParamField path="orientation" type="'horizontal' | 'vertical'">
+      When provided, use it to switch between horizontal and vertical layouts.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render all options disabled and prevent selection changes.
+    </ParamField>
+    <ParamField path="isLoading" type="boolean">
+      When `true`, show a loading indicator or busy state for the list.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Checkbox
+
+Single checkbox for table/grid selections or custom checkbox layouts.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the checkbox input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="checked" type="boolean" required>
+      Render the checkbox as checked when `true`.
+    </ParamField>
+    <ParamField path="onChange" type="() => void" required>
+      Call when the user toggles this checkbox.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the checkbox input.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the checkbox input.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the checkbox disabled and prevent toggling.
+    </ParamField>
+    <ParamField path="label" type="ReactNode">
+      Optional inline label content to render alongside the checkbox.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## CheckboxList
+
+Multi-select option list presented as checkboxes. Supports per-option errors via `SelectedOptionItem.errors` and `SelectedOptionItem.ariaDescribedBy`.
+
+<Note>
+  Call `onSelect` or `onDeselect` once per user action. Do not reorder the selections provided by the renderer.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Use as the checkbox group `name` and container `id` to keep inputs grouped.
+    </ParamField>
+    <ParamField path="options" type="OptionItem[]" required>
+      Render these entries as checkbox options.
+    </ParamField>
+    <ParamField path="selectedOptions" type="SelectedOptionItem[]" required>
+      Render these selections as checked options. Use their `token` values to match checked state. When a selected option provides `errors` or `ariaDescribedBy`, render the error content near that option and attach `aria-describedby` to its focusable element.
+    </ParamField>
+    <ParamField path="onSelect" type="(token: string) => void" required>
+      Call with the option token when the user checks a box.
+    </ParamField>
+    <ParamField path="onDeselect" type="(token: string) => void" required>
+      Call with the option token when the user unchecks a box.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the group container.
+    </ParamField>
+    <ParamField path="specifyOtherOption" type="OptionItem">
+      When provided, render this as an extra option. When selected, the renderer provides `customOptionForm`.
+    </ParamField>
+    <ParamField path="customOptionForm" type="ReactNode">
+      Present only while custom-option entry is active. Render near the options list.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the group container.
+    </ParamField>
+    <ParamField path="orientation" type="'horizontal' | 'vertical'">
+      When provided, use it to switch between horizontal and vertical layouts.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render all options disabled and prevent changes.
+    </ParamField>
+    <ParamField path="isLoading" type="boolean">
+      When `true`, show a loading indicator or busy state for the list.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## MultiSelectInput
+
+Composite multi-select UI combining a picker dropdown, selected chips, and optional custom-option content. Display selections as removable chips. Allow removal when the selection is not disabled.
+
+<Note>
+  Attach `SelectedOptionItem.ariaDescribedBy` to the focusable element for each chip so per-selection errors can be announced by screen readers.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the picker input `id` for combobox and listbox wiring.
+    </ParamField>
+    <ParamField path="options" type="OptionItem[]" required>
+      Render these entries as options in the picker dropdown.
+    </ParamField>
+    <ParamField path="selectedOptions" type="SelectedOptionItem[]" required>
+      Render these selections as chips. Use their `token` values to filter available options.
+    </ParamField>
+    <ParamField path="onSelect" type="(token: string) => void" required>
+      Call with the selected token when the user picks an option.
+    </ParamField>
+    <ParamField path="onDeselect" type="(token: string) => void" required>
+      Call with the token when the user removes a chip.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the picker input.
+    </ParamField>
+    <ParamField path="onSearch" type="(query: string) => void">
+      Call with the search query when the user types into the picker.
+    </ParamField>
+    <ParamField path="specifyOtherOption" type="OptionItem">
+      When provided, render as an extra option in the picker. Selecting it opens custom-entry state.
+    </ParamField>
+    <ParamField path="customOptionForm" type="ReactNode">
+      Present only while custom-entry is active.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the picker input.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the picker and chip actions in a disabled state.
+    </ParamField>
+    <ParamField path="isLoading" type="boolean">
+      When `true`, show a loading indicator or busy state for the options.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text in the picker when no value is typed.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## OptionDisplay
+
+Wrapper for option labels used in list, dropdown, and table selection controls. The renderer provides already-rendered content; your component wraps it with any optional adornments.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="children" type="ReactNode" required>
+      Render the main option label content provided by the renderer.
+    </ParamField>
+    <ParamField path="prefix" type="string">
+      Optional prefix text for the option (for example, `A.`). Render before the label.
+    </ParamField>
+    <ParamField path="media" type="Attachment">
+      Optional media attachment associated with the option label.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## CustomOptionForm
+
+Layout wrapper for the "specify other" custom option entry flow. Render it with a submit action, a cancel action, and the custom input content. Respect `canSubmit` when rendering the submit button.
+
+<Tip>
+  Use `useStrings()` to source `dialog.submit` and `dialog.cancel` strings so this component works across questionnaire languages.
+</Tip>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="content" type="ReactNode" required>
+      Render the custom input control provided by the renderer.
+    </ParamField>
+    <ParamField path="onSubmit" type="() => void" required>
+      Call when the user confirms the custom option value.
+    </ParamField>
+    <ParamField path="onCancel" type="() => void" required>
+      Call when the user exits custom entry and returns to the options list.
+    </ParamField>
+    <ParamField path="errors" type="ReactNode">
+      Render validation or error content associated with the custom input when provided.
+    </ParamField>
+    <ParamField path="canSubmit" type="boolean">
+      When `false`, render the submit action disabled.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `dialog.submit` | Label for the submit/add action |
+    | `dialog.cancel` | Label for the cancel action |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## FileInput
+
+Attachment picker that handles file selection, display of the selected file metadata, and clearing. Call `onChange` with the raw `File` object (or `undefined` when clearing) so the renderer can update the `Attachment` value.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the file input `id` so labels can target the underlying file input element.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the file input and any summary region.
+    </ParamField>
+    <ParamField path="value" type="Attachment">
+      Current attachment. When `undefined`, no file is selected. Render the `Attachment` fields (title, size, contentType) as metadata display.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the file input and any summary region.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, disable file selection and related actions.
+    </ParamField>
+    <ParamField path="accept" type="string">
+      Forward to the file input `accept` attribute to limit selectable file types.
+    </ParamField>
+    <ParamField path="onChange" type="(file?: File) => void">
+      Call with the selected `File` object, or `undefined` when clearing the current file.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Options and custom options lifecycle
+
+Understanding how the renderer manages options helps you implement selection controls correctly.
+
+- **Token stability**: option tokens are stable across renders. Use them as React keys.
+- **Legacy options**: the renderer may include disabled legacy options in `options` to keep stored answers visible. Render them as normal options but with the `disabled` flag applied.
+- **Specify other**: when `specifyOtherOption` is provided, render it as an extra entry at the end of the options list. When the user selects it, the renderer enters custom-entry state and provides `customOptionForm`.
+- **`customOptionForm` lifecycle**: this prop is present only while custom entry is active. Use `onSubmit` to commit the custom value and `onCancel` to return to the options list. Respect `canSubmit` when rendering the submit control.
+- **Loading state**: `isLoading` can be `true` while options are fetching. The renderer may also render an `OptionsLoading` component separately. Handle both without duplicating loading indicators.
+
+<Warning>
+  If `canAdd` or `canRemove` is `false` for an answer or group, render the action button as disabled rather than hiding it.
+</Warning>

@@ -1,0 +1,114 @@
+---
+title: "Validation and form submission in Formbox Renderer"
+description: "Understand how onSubmit fires only after validation passes, how errors are surfaced through the theme, and what validation rules the renderer enforces."
+---
+
+Formbox Renderer validates the form before calling `onSubmit`. If any item fails validation, the submit callback is **not** invoked and the renderer instead surfaces errors through the theme's `Errors` component slots. This page explains the validation model, how to handle submission, and what kinds of errors the renderer can produce.
+
+## The submit flow
+
+When the form's submit action is triggered, the renderer calls `store.validateAll()` internally. This method runs every active validation rule across all nodes and marks the form as "submit attempted" so that all error slots become visible — including fields the user has not yet touched.
+
+If `validateAll()` returns `true`, the renderer calls your `onSubmit` callback with the current `QuestionnaireResponse`. If it returns `false`, `onSubmit` is not called and the error state is displayed to the user.
+
+```tsx
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireResponseOf } from "@formbox/renderer";
+
+export function PatientForm({ questionnaire }) {
+  function handleSubmit(response: QuestionnaireResponseOf<"r5">) {
+    // Only called when all validation passes
+    console.log("Valid response:", response);
+  }
+
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      onSubmit={handleSubmit}
+    />
+  );
+}
+```
+
+<Note>
+  `onSubmit` fires **only** after validation passes. You do not need to validate the response yourself before persisting it.
+</Note>
+
+## Validation rules the renderer enforces
+
+The renderer checks several categories of constraints automatically:
+
+<CardGroup cols={2}>
+  <Card title="Required fields" icon="asterisk">
+    Items with `required: true` or a `required` expression that evaluates to `true` must have at least one non-empty answer.
+  </Card>
+  <Card title="Min and max occurs" icon="arrows-up-down">
+    Repeating questions and group lists enforce `minOccurs` and `maxOccurs` — including values set via FHIRPath expressions.
+  </Card>
+  <Card title="Constraint expressions" icon="code">
+    Items with `questionnaire-constraint` extensions are evaluated via FHIRPath. The `human` message is shown when the constraint fails.
+  </Card>
+  <Card title="Value bounds" icon="sliders">
+    Min/max value extensions on date, dateTime, decimal, integer, and quantity items are validated against the entered value.
+  </Card>
+</CardGroup>
+
+Additional per-answer rules include:
+
+- `minLength` / `maxLength` for string and text items.
+- `maxDecimalPlaces` for decimal items.
+- Attachment size and MIME type restrictions.
+
+## Error issue codes
+
+The renderer produces `OperationOutcomeIssue` objects for each failed rule. Each issue has a `code` that describes the category:
+
+| Code | Meaning |
+|---|---|
+| `required` | A required answer is missing. |
+| `business-rule` | A constraint expression failed or a logic conflict was detected. |
+| `invalid` | A value violates a constraint (bounds, format, decimal places). |
+| `structure` | An item exceeds its `maxOccurs` limit. |
+
+## Errors in the theme
+
+The renderer populates `Errors` component slots in the theme tree when validation fails. There are two levels:
+
+- **Answer-level errors**: shown inside the `AnswerScaffold`, near the individual input that failed.
+- **Question-level errors**: shown in the `QuestionScaffold`, below the answer list.
+
+Your theme must implement an `Errors` component to make validation messages visible to the user. If `Errors` is not rendered, the form can still be submitted once validation passes — but users will not see why the form cannot be submitted while it fails.
+
+```
+QuestionScaffold
+  Label
+  AnswerList
+    AnswerScaffold
+      [input control]
+      Errors         ← per-answer errors rendered here
+  Errors             ← per-question errors rendered here
+```
+
+<Warning>
+  If your theme's `Errors` component renders nothing, users will see no feedback when validation fails. Make sure your theme renders errors in both question and answer scaffold positions.
+</Warning>
+
+## Watching for response changes without waiting for submit
+
+If you need every intermediate response as the user types — for example, to save a draft — use `onChange` instead of `onSubmit`. `onChange` fires on every state change regardless of validation status.
+
+```tsx
+<Renderer
+  fhirVersion="r5"
+  questionnaire={questionnaire}
+  theme={theme}
+  onChange={(response) => saveDraft(response)}
+  onSubmit={(response) => submitFinal(response)}
+/>
+```
+
+`onChange` receives the response even when it is invalid. Only `onSubmit` is gated behind validation.

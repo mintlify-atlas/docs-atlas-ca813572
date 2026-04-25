@@ -1,0 +1,131 @@
+---
+title: "Localizing forms with Formbox Renderer"
+description: "Configure questionnaire language, supply translated UI strings, switch locales at runtime, and use the useStrings hook in custom theme components."
+---
+
+Formbox Renderer has built-in support for multilingual questionnaires and localized UI strings. Language detection, string resolution, and runtime language switching are all handled by the renderer so your theme components automatically show translated text.
+
+## How language is determined
+
+When using the standard renderer from `@formbox/renderer`, the active language is determined in this order:
+
+1. The `defaultLanguage` prop, if provided.
+2. The `questionnaire.language` field, if `defaultLanguage` is absent.
+3. English (`"en"`) as the fallback when neither is set.
+
+The renderer maps the active language to a `Strings` bundle from `@formbox/strings` by matching the primary language subtag (e.g. `"fi-FI"` resolves to `"fi"`).
+
+## Supplying an initial language
+
+```tsx
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+
+export function ClinicalForm({ questionnaire }) {
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      defaultLanguage="fr"
+      onLanguageChange={(lang) => console.log("Language changed to", lang)}
+    />
+  );
+}
+```
+
+## Detecting language changes
+
+The `onLanguageChange` callback fires whenever the user selects a different language from the language selector rendered by your theme. Use it to persist the user's preference or synchronize with your app's locale state.
+
+```tsx
+<Renderer
+  fhirVersion="r5"
+  questionnaire={questionnaire}
+  theme={theme}
+  defaultLanguage={savedLanguage}
+  onLanguageChange={(lang) => {
+    setSavedLanguage(lang);
+  }}
+/>
+```
+
+## UI strings with @formbox/strings
+
+UI labels like "Submit", "Cancel", "Add another", and validation messages come from the active `Strings` bundle. `@formbox/strings` ships built-in translations for 12 locales:
+
+`de`, `en`, `es`, `fi`, `fr`, `it`, `nl`, `pl`, `pt`, `ru`, `sv`, `tr`
+
+The standard renderer resolves strings automatically. In [controlled mode](/guides/controlled-mode), you pass them explicitly.
+
+Import a single locale to keep your bundle small:
+
+```ts
+import en from "@formbox/strings/en";
+import fi from "@formbox/strings/fi";
+```
+
+Import all locales if you need runtime lookup:
+
+```ts
+import strings from "@formbox/strings";
+
+const locale = strings["de"] ?? strings["en"];
+```
+
+## The Strings type
+
+Every locale in `@formbox/strings` satisfies the `Strings` type exported from `@formbox/renderer` (and from `@formbox/theme`). When you write custom theme components that consume strings, import the type to stay in sync with the contract.
+
+```ts
+import type { Strings } from "@formbox/renderer";
+```
+
+## Using strings in theme components
+
+Inside any theme component, use the `useStrings()` hook from `@formbox/theme` to access the active `Strings` bundle. The hook reads from the nearest `StringsContext.Provider` that the renderer sets up, so it always returns the currently active locale.
+
+```tsx
+import { useStrings } from "@formbox/theme";
+
+export function MySubmitButton({ onSubmit }) {
+  const strings = useStrings();
+
+  return (
+    <button type="button" onClick={onSubmit}>
+      {strings.form.submit}
+    </button>
+  );
+}
+```
+
+<Tip>
+  Always use `useStrings()` for button labels, placeholders, and error messages in theme components. Hardcoded strings break multilingual forms.
+</Tip>
+
+## Controlled mode for external locale management
+
+When your app already manages locale state — for example, via a global i18n context — use the controlled renderer so language and strings stay in sync with your app without any duplication.
+
+```tsx
+import Renderer from "@formbox/renderer/controlled";
+import fi from "@formbox/strings/fi";
+
+<Renderer
+  fhirVersion="r5"
+  questionnaire={questionnaire}
+  language="fi"
+  strings={fi}
+  onLanguageChange={setLanguage}
+  theme={theme}
+/>
+```
+
+See [Controlled mode](/guides/controlled-mode) for the full props reference and a language-switching example.
+
+## Questionnaire translations via FHIR extensions
+
+FHIR Questionnaire resources can carry translated text directly using the `_text` extension mechanism defined in the SDC (Structured Data Capture) specification. When a translation extension is present on an item's `_text` field and the active language matches, the renderer displays the translated text instead of the base text.
+
+The renderer reads the active language from its internal state (or from the `language` prop in controlled mode) and selects the matching translation when available. If no translation is found for the active language, the base `text` field is used.

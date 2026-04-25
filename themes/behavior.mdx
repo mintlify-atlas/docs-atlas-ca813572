@@ -1,0 +1,340 @@
+---
+title: "Formbox Renderer theme behavior and runtime contract"
+description: "Runtime rules every theme must follow: accessibility ids, controlled input values, disabled state, options lifecycle, and localization with useStrings()."
+---
+
+Every theme implementation must follow a set of runtime contracts that the renderer depends on to deliver correct accessibility, form state, and user experience. This page documents those contracts. When a prop's behavior is ambiguous, treat this page as the authoritative source.
+
+## Accessibility contract
+
+The renderer generates all `id`, `ariaLabelledBy`, and `ariaDescribedBy` values and guarantees they are unique within a render and stable for a given node or answer across re-renders.
+
+### id, ariaLabelledBy, and ariaDescribedBy
+
+- When `id` is provided, set it on the **primary focusable element** — the element that receives keyboard focus. For composite widgets (combobox, listbox, slider), use `id` on the element users actually interact with.
+- `ariaLabelledBy` is a space-separated string of one or more element ids. Forward it verbatim as `aria-labelledby` on the focusable element.
+- `ariaDescribedBy` is a space-separated string that references rendered `Help` and `Errors` ids. Forward it verbatim as `aria-describedby` on the focusable element. Keep the referenced elements in the DOM while they are rendered.
+
+```tsx
+<input
+  id={id}
+  aria-labelledby={ariaLabelledBy}
+  aria-describedby={ariaDescribedBy}
+/>
+```
+
+<Warning>
+Do not split, modify, or re-join `ariaLabelledBy` or `ariaDescribedBy`. The renderer has already composed them correctly.
+</Warning>
+
+### Label id
+
+`Label` receives an `id` prop. Apply it to the element wrapping the visible label text so controls can reference it via `aria-labelledby`:
+
+```tsx
+export function Label({ id, children, htmlFor }: LabelProperties) {
+  return (
+    <label htmlFor={htmlFor}>
+      <span id={id}>{children}</span>
+    </label>
+  );
+}
+```
+
+### Legal and flyover content
+
+Legal and flyover content is **not** included in `ariaDescribedBy` by default. Keep those elements accessible in your layout using appropriate ARIA roles or visible placement — they are the theme's responsibility to wire up.
+
+### TabContainer ARIA pattern
+
+`TabContainer` must follow the [WAI-ARIA tab pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/). Each `TabItem` provides `buttonId` and `panelId` to wire up the roles:
+
+```tsx
+import type { TabContainerProperties } from "@formbox/theme";
+
+export function TabContainer({ items, value, onChange, errors, header }: TabContainerProperties) {
+  return (
+    <div>
+      {header}
+      <div role="tablist">
+        {items.map((item, index) => (
+          <button
+            key={item.token}
+            id={item.buttonId}
+            role="tab"
+            aria-selected={index === value}
+            aria-controls={item.panelId}
+            onClick={() => onChange(index)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {items.map((item, index) => (
+        <div
+          key={item.token}
+          id={item.panelId}
+          role="tabpanel"
+          aria-labelledby={item.buttonId}
+          hidden={index !== value}
+        >
+          {item.content}
+        </div>
+      ))}
+      {errors}
+    </div>
+  );
+}
+```
+
+### Custom select and multiselect ARIA
+
+When implementing `SelectInput` or `MultiSelectInput` with custom UI (not a native `<select>`), follow combobox and listbox roles:
+
+- Use `role="combobox"` on the input and `role="listbox"` on the dropdown.
+- Support keyboard navigation: **Arrow keys** to move through options, **Enter** or **Space** to select, **Escape** to close the dropdown.
+- Apply `id` to the combobox input for `aria-controls` wiring.
+
+## Controlled values
+
+All inputs are controlled. Callbacks receive parsed values — never raw DOM events. The renderer manages state; your component converts DOM events before calling back.
+
+<Accordion title="Text inputs">
+
+**TextInput** and **TextArea**: pass the raw string value. An empty field calls back with an empty string — do not convert it to `undefined`.
+
+```tsx
+onChange={(event) => onChange(event.target.value)}
+```
+
+</Accordion>
+
+<Accordion title="Numeric inputs">
+
+**NumberInput**, **SpinnerInput**, and **SliderInput**: parse to `number` or call back with `undefined` when the field is empty or contains an invalid value. Do not pass `NaN`.
+
+```tsx
+onChange={(event) => {
+  const parsed = parseFloat(event.target.value);
+  onChange(isNaN(parsed) ? undefined : parsed);
+}}
+```
+
+</Accordion>
+
+<Accordion title="Date and time inputs">
+
+**DateInput**, **DateTimeInput**, and **TimeInput**: treat the value as an opaque string and return it exactly as entered. Do not normalize, format, or shift timezones. The renderer owns date parsing.
+
+```tsx
+onChange={(event) => onChange(event.target.value)}
+```
+
+</Accordion>
+
+<Accordion title="Single-select (SelectInput, RadioButtonList)">
+
+`selectedOption = undefined` means no selection. Call `onChange(token)` when the user selects an option and `onChange(undefined)` when the selection is cleared.
+
+```tsx
+// Selecting
+onChange(option.token)
+
+// Clearing
+onChange(undefined)
+```
+
+</Accordion>
+
+<Accordion title="Multi-select (CheckboxList, MultiSelectInput)">
+
+Selected tokens are provided as `selectedOptions[].token`. Call `onSelect(token)` once when the user checks an option and `onDeselect(token)` once when the user unchecks. Do not reorder the selections array the renderer provides.
+
+```tsx
+// Checking a box
+onSelect(item.token)
+
+// Unchecking
+onDeselect(item.token)
+```
+
+</Accordion>
+
+## Disabled behavior
+
+When `disabled` is `true`, render the UI as disabled and suppress all callbacks. The user must not be able to change any value.
+
+- **Native inputs**: use the `disabled` attribute — the browser handles suppression automatically.
+- **Custom widgets**: set `aria-disabled="true"`, remove from the tab order with `tabIndex={-1}`, and ignore pointer and keyboard events.
+- **Disabled options**: remain visible. Announce them as disabled but do not hide them.
+
+```tsx
+// Native
+<input disabled={disabled} onChange={...} />
+
+// Custom widget
+<div
+  role="combobox"
+  aria-disabled={disabled ? "true" : undefined}
+  tabIndex={disabled ? -1 : 0}
+  onClick={disabled ? undefined : handleClick}
+/>
+```
+
+## Options and custom options lifecycle
+
+### Stable tokens
+
+Option tokens are stable across renders and safe to use as React keys. A token may remain selected even when the options list changes — for example, when a stored answer references an option that is no longer in the list.
+
+### Legacy options
+
+The renderer may include disabled legacy options in the `options` array to keep stored answers visible. Treat them as normal options but respect their `disabled` flag.
+
+### SelectedOptionItem.label
+
+`SelectedOptionItem.label` may not match any entry in the current `options` list. This happens with custom values and legacy options. Render the label as provided — do not try to look it up in the options list.
+
+### specifyOtherOption and customOptionForm
+
+When a question allows custom option entry:
+
+1. `specifyOtherOption` is an extra `OptionItem` to render alongside the regular options list. When the user selects it, the renderer enters custom-entry state.
+2. While in custom-entry state, `customOptionForm` provides a `ReactNode` containing the input form. Render it near the options list or replace the list with it.
+3. `customOptionForm` is absent when not in custom-entry state. It is never `null` — it is simply not provided.
+
+Use `CustomOptionForm`'s `onSubmit` to commit and `onCancel` to exit back to the options list. Respect `canSubmit` when rendering the submit action.
+
+### isLoading
+
+When `isLoading` is `true`, options are still fetching. Show a loading indicator or disable option interaction. The renderer may also render an `OptionsLoading` component in the question scaffold — avoid duplicating spinners by checking whether both are visible at the same time.
+
+### orientation
+
+`RadioButtonList` and `CheckboxList` may receive an `orientation` prop (`"horizontal"` or `"vertical"`). When provided, switch between row and column layouts accordingly. When omitted, use your default layout.
+
+## Repeating items contract
+
+### AnswerList and AnswerScaffold
+
+`AnswerList` holds one or more `AnswerScaffold` entries. When `onAdd` is provided, render an add-answer control. When `canAdd` is `false`, render the control disabled — do not hide it.
+
+`AnswerScaffold` wraps a single answer row. When `onRemove` is provided, render a remove action. When `canRemove` is `false`, render it disabled.
+
+```tsx
+export function AnswerList({ children, onAdd, canAdd }: AnswerListProperties) {
+  const strings = useStrings();
+  return (
+    <div>
+      {children}
+      {onAdd && (
+        <button onClick={onAdd} disabled={canAdd === false}>
+          {strings.selection.addAnother}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+### GroupList and GroupScaffold
+
+`GroupList` wraps a repeating group. When `onAdd` is provided, render an add-instance control. When `canAdd` is `false`, render it disabled.
+
+`GroupScaffold` wraps a single group instance. When `onRemove` is provided, render a remove action. When `canRemove` is `false`, render it disabled.
+
+```tsx
+export function GroupScaffold({
+  children,
+  header,
+  errors,
+  isExpanded,
+  onRemove,
+  canRemove,
+}: GroupScaffoldProperties) {
+  const strings = useStrings();
+  return (
+    <div>
+      {header}
+      {isExpanded && children}
+      {errors}
+      {onRemove && (
+        <button onClick={onRemove} disabled={canRemove === false}>
+          {strings.group.removeSection}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+### isExpanded
+
+Both `QuestionScaffold` and `GroupScaffold` receive `isExpanded`. Use it to decide whether to render or visually hide the body content. When `false`, the header remains visible but the controls and children should not be shown.
+
+## Strings and localization
+
+`useStrings()` returns the full `Strings` object for the currently active questionnaire language. Call it inside any component that renders user-visible text — button labels, aria labels, placeholder strings, and validation message templates.
+
+```tsx
+import { useStrings } from "@formbox/theme";
+
+export function GroupList({ children, onAdd, canAdd, header }: GroupListProperties) {
+  const strings = useStrings();
+  return (
+    <div>
+      {header}
+      {children}
+      {onAdd && (
+        <button onClick={onAdd} disabled={canAdd === false}>
+          {strings.group.addSection}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+The `Strings` type includes keys for every piece of text the renderer and built-in themes display. Some values are template strings with placeholders in the format `{key}`:
+
+```ts
+// strings.file.sizeLabel = "Size: {sizeKb} KB"
+const label = strings.file.sizeLabel.replace("{sizeKb}", String(sizeKb));
+```
+
+<Tip>
+To override specific translation strings without rebuilding a theme, supply a customized `Strings` object via the `strings` prop on the controlled renderer. Spread the base locale and override only the keys you need — the rest inherit from the built-in bundle.
+</Tip>
+
+## Form component
+
+`Form` wraps the full questionnaire. If you render a `<form>` element, prevent the default submission and call `onSubmit` manually:
+
+```tsx
+<form
+  onSubmit={(event) => {
+    event.preventDefault();
+    onSubmit?.();
+  }}
+>
+  {children}
+</form>
+```
+
+When `pagination` is provided, render previous and next controls alongside the submit and cancel actions:
+
+```tsx
+{pagination && (
+  <nav>
+    <button onClick={pagination.onPrev} disabled={pagination.disabledPrev}>
+      {strings.pagination.previous}
+    </button>
+    <span>{pagination.current} / {pagination.total}</span>
+    <button onClick={pagination.onNext} disabled={pagination.disabledNext}>
+      {strings.pagination.next}
+    </button>
+  </nav>
+)}
+```
+
+When `languageSelector` is provided as a `ReactNode`, render it in your form header area so users can switch questionnaire language.

@@ -1,0 +1,349 @@
+---
+title: "Building a custom Formbox Renderer theme from scratch"
+description: "Implement the Theme contract by extending a built-in theme or implementing all slots. Covers installation, i18n, and key prop conventions."
+---
+
+A theme is a plain object typed as `Theme` from `@formbox/theme`. Every field maps a slot name to a React component the renderer calls with typed props. You can implement the full object from scratch or spread an existing theme and override the components you want to replace — both approaches produce the same type and work identically at runtime.
+
+## Install @formbox/theme
+
+If you are building a publishable theme package, add `@formbox/theme` as a regular dependency:
+
+```bash
+npm install @formbox/theme
+```
+
+If you only need the types inside an application (for example, to override a few components), install it as a dev dependency:
+
+```bash
+npm install --save-dev @formbox/theme
+```
+
+## Approach 1: Extend an existing theme
+
+The quickest path to a working theme is to spread a built-in theme and override specific components. This lets you adopt the full set of defaults and incrementally replace slots.
+
+<Steps>
+  <Step title="Install a base theme">
+    ```bash
+    npm install @formbox/hs-theme
+    ```
+  </Step>
+  <Step title="Create your theme file">
+    Spread the base theme and override the components you want to change:
+
+    ```tsx
+    import type { Theme } from "@formbox/theme";
+    import { theme as baseTheme } from "@formbox/hs-theme";
+    import { MyLabel } from "./components/label";
+    import { MyTextInput } from "./components/text-input";
+
+    export const theme: Theme = {
+      ...baseTheme,
+      Label: MyLabel,
+      TextInput: MyTextInput,
+    };
+    ```
+  </Step>
+  <Step title="Pass the theme to the renderer">
+    Import the base theme's CSS (or your own) and pass the theme object to `Renderer`:
+
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { theme } from "./theme";
+    import "@formbox/hs-theme/style.css"; // or your own CSS
+
+    export function MyForm({ questionnaire }) {
+      return (
+        <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+## Approach 2: Implement from scratch
+
+To build a fully independent theme with no shared code from a built-in theme, implement every slot yourself and assemble the object manually.
+
+```tsx
+import type { Theme } from "@formbox/theme";
+
+import { TextInput } from "./components/text-input";
+import { TextArea } from "./components/text-area";
+import { NumberInput } from "./components/number-input";
+import { DateInput } from "./components/date-input";
+import { DateTimeInput } from "./components/date-time-input";
+import { TimeInput } from "./components/time-input";
+import { SliderInput } from "./components/slider-input";
+import { SpinnerInput } from "./components/spinner-input";
+import { FileInput } from "./components/file-input";
+import { SelectInput } from "./components/select-input";
+import { RadioButton } from "./components/radio-button";
+import { RadioButtonList } from "./components/radio-button-list";
+import { Checkbox } from "./components/checkbox";
+import { CheckboxList } from "./components/checkbox-list";
+import { MultiSelectInput } from "./components/multi-select-input";
+import { CustomOptionForm } from "./components/custom-option-form";
+import { OptionDisplay } from "./components/option-display";
+import { OptionsLoading } from "./components/options-loading";
+import { SignatureInput } from "./components/signature-input";
+import { Label } from "./components/label";
+import { Help } from "./components/help";
+import { Legal } from "./components/legal";
+import { Flyover } from "./components/flyover";
+import { Errors } from "./components/errors";
+import { QuestionScaffold } from "./components/question-scaffold";
+import { AnswerList } from "./components/answer-list";
+import { AnswerScaffold } from "./components/answer-scaffold";
+import { GroupList } from "./components/group-list";
+import { GroupScaffold } from "./components/group-scaffold";
+import { InputGroup } from "./components/input-group";
+import { Form } from "./components/form";
+import { Stack } from "./components/stack";
+import { Header } from "./components/header";
+import { Footer } from "./components/footer";
+import { DisplayRenderer } from "./components/display-renderer";
+import { TabContainer } from "./components/tab-container";
+import { Table } from "./components/table";
+import { Link } from "./components/link";
+import { LanguageSelector } from "./components/language-selector";
+
+export const theme: Theme = {
+  TextInput,
+  TextArea,
+  NumberInput,
+  DateInput,
+  DateTimeInput,
+  TimeInput,
+  SliderInput,
+  SpinnerInput,
+  FileInput,
+  SelectInput,
+  RadioButton,
+  RadioButtonList,
+  Checkbox,
+  CheckboxList,
+  MultiSelectInput,
+  CustomOptionForm,
+  OptionDisplay,
+  OptionsLoading,
+  SignatureInput,
+  Label,
+  Help,
+  Legal,
+  Flyover,
+  Errors,
+  QuestionScaffold,
+  AnswerList,
+  AnswerScaffold,
+  GroupList,
+  GroupScaffold,
+  InputGroup,
+  Form,
+  Stack,
+  Header,
+  Footer,
+  DisplayRenderer,
+  TabContainer,
+  Table,
+  Link,
+  LanguageSelector,
+};
+```
+
+## Implementing a component
+
+Each slot is a standard React functional component. Import the corresponding `*Properties` type from `@formbox/theme` to get full type information for the props the renderer will pass.
+
+The example below shows a minimal `TextInput`:
+
+```tsx
+import type { TextInputProperties } from "@formbox/theme";
+
+export function TextInput({
+  id,
+  type = "text",
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  ariaLabelledBy,
+  ariaDescribedBy,
+  inputMode,
+  minLength,
+  maxLength,
+}: TextInputProperties) {
+  return (
+    <input
+      id={id}
+      type={type}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      inputMode={inputMode}
+      minLength={minLength}
+      maxLength={maxLength}
+    />
+  );
+}
+```
+
+And a `Label` component showing how to handle all its optional slots:
+
+```tsx
+import type { LabelProperties } from "@formbox/theme";
+import { useStrings } from "@formbox/theme";
+
+export function Label({
+  prefix,
+  children,
+  id,
+  htmlFor,
+  required,
+  help,
+  legal,
+  flyover,
+  isExpanded,
+  onToggleExpanded,
+  as = "label",
+}: LabelProperties) {
+  const strings = useStrings();
+
+  return (
+    <div>
+      <label id={id} htmlFor={htmlFor}>
+        {prefix && <span>{prefix}</span>}
+        {children}
+        {required && <span aria-hidden>*</span>}
+        {!!onToggleExpanded && (
+          <button
+            type="button"
+            onClick={onToggleExpanded}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded
+                ? strings.collapsible.collapse
+                : strings.collapsible.expand
+            }
+          />
+        )}
+      </label>
+      {help}
+      {legal}
+      {flyover}
+    </div>
+  );
+}
+```
+
+## Using useStrings() for i18n
+
+`useStrings()` from `@formbox/theme` returns the full `Strings` object for the currently selected questionnaire language. Call it inside any theme component that renders text the user will see.
+
+```tsx
+import { useStrings } from "@formbox/theme";
+
+export function AnswerList({ children, onAdd, canAdd }) {
+  const strings = useStrings();
+
+  return (
+    <div>
+      {children}
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={canAdd === false}
+        >
+          {strings.selection.addAnother}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+The `Strings` type covers all text the renderer and built-in themes display — aria labels, button text, validation messages, pagination, and more. Use these keys instead of hardcoded strings so your theme automatically inherits language switching.
+
+<Tip>
+If you need to override specific strings, supply a customized `Strings` object via the `strings` prop on the controlled renderer rather than hardcoding text inside theme components. Spread the base locale and override only the keys you want to change.
+</Tip>
+
+## Key conventions
+
+Follow these conventions when implementing theme components to keep your theme compatible with the renderer contract.
+
+### Inputs are controlled
+
+Callbacks receive values, not DOM events. Convert DOM events inside your component:
+
+```tsx
+// Correct — extract the value from the event
+onChange={(event) => onChange(event.target.value)}
+
+// Wrong — never pass the event to the renderer callback
+onChange={onChange}
+```
+
+### Disabled state
+
+Use the `disabled` prop to indicate non-editable state. For native inputs, set the `disabled` attribute. For custom widgets, set `aria-disabled="true"`, remove the element from the tab order with `tabIndex={-1}`, and suppress pointer and keyboard events.
+
+```tsx
+// Native input
+<input disabled={disabled} ... />
+
+// Custom widget
+<div
+  role="combobox"
+  aria-disabled={disabled ? "true" : undefined}
+  tabIndex={disabled ? -1 : 0}
+  ...
+/>
+```
+
+### Accessibility ids
+
+`ariaLabelledBy` and `ariaDescribedBy` are already-composed, space-separated id strings. Forward them verbatim to the primary focusable element — do not modify or split them:
+
+```tsx
+<input
+  aria-labelledby={ariaLabelledBy}
+  aria-describedby={ariaDescribedBy}
+  ...
+/>
+```
+
+When `id` is provided, apply it to the primary focusable element:
+
+```tsx
+<input id={id} ... />
+```
+
+### children and label are ReactNode
+
+The `children` prop on layout components like `QuestionScaffold`, `AnswerList`, and `GroupScaffold` is already-rendered `ReactNode`. Option types use `label` for display content, also already rendered. Never stringify these values — render them directly:
+
+```tsx
+// Correct
+<div>{children}</div>
+
+// Wrong
+<div>{String(children)}</div>
+```
+
+### canAdd and canRemove
+
+When `canAdd` or `canRemove` is `false`, render the action as disabled — do not hide it. Hiding disables the visual affordance but breaks accessibility because the action is expected to be present.
+
+```tsx
+{onAdd && (
+  <button onClick={onAdd} disabled={canAdd === false}>
+    Add another
+  </button>
+)}
+```

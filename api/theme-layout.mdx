@@ -1,0 +1,502 @@
+---
+title: "Theme Contract: Layout and Structure Components"
+description: "Prop reference for Form, Stack, Header, Footer, TabContainer, Table, Label, Help, Legal, Flyover, Errors, Link, and LanguageSelector theme slots."
+---
+
+Layout components control the visual container hierarchy of the rendered questionnaire. They range from the outermost form wrapper down to individual label slots and validation displays. The renderer never touches DOM elements directly — these components own all markup, spacing, and style decisions.
+
+---
+
+## Form
+
+Outermost wrapper for the questionnaire. If you render a `<form>` element, call `event.preventDefault()` yourself before invoking `onSubmit`. When `pagination` is provided, render previous/next controls alongside submit/cancel and keep them consistent in position.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="children" type="ReactNode" required>
+      Render the full form content inside the form element.
+    </ParamField>
+    <ParamField path="onSubmit" type="() => void">
+      Call when the user submits the form. If you render a native `<form>`, prevent default first.
+    </ParamField>
+    <ParamField path="onCancel" type="() => void">
+      Call when the user cancels or exits the form flow.
+    </ParamField>
+    <ParamField path="pagination" type="FormPagination">
+      When provided, render pagination controls (previous, next, current page, total pages).
+    </ParamField>
+    <ParamField path="title" type="string">
+      Render the questionnaire title text.
+    </ParamField>
+    <ParamField path="description" type="string">
+      Render the questionnaire description text.
+    </ParamField>
+    <ParamField path="languageSelector" type="ReactNode">
+      When provided, render this language-switching control in the form header area.
+    </ParamField>
+    <ParamField path="errors" type="ReactNode">
+      Render form-level error content near the top of the form.
+    </ParamField>
+    <ParamField path="before" type="ReactNode">
+      Render content before the main form body (for example, pinned headers or banners).
+    </ParamField>
+    <ParamField path="after" type="ReactNode">
+      Render content after the main form body (for example, action buttons or footers).
+    </ParamField>
+    <ParamField path="signature" type="ReactNode">
+      Render signature content when provided by the renderer.
+    </ParamField>
+  </Accordion>
+  <Accordion title="FormPagination fields">
+    The `pagination` prop contains these fields when paging is active:
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `current` | `number` | Current page number (1-indexed). |
+    | `total` | `number` | Total page count. |
+    | `onPrev` | `() => void` | Call when the user activates the previous-page control. |
+    | `onNext` | `() => void` | Call when the user activates the next-page control. |
+    | `disabledPrev` | `boolean` | When `true`, render the previous-page control disabled. |
+    | `disabledNext` | `boolean` | When `true`, render the next-page control disabled. |
+  </Accordion>
+  <Accordion title="Example patterns">
+    ```tsx
+    // With a native form element
+    const Form: FormComponent = ({ children, onSubmit, onCancel }) => (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit?.();
+        }}
+      >
+        {children}
+        <button type="submit">Submit</button>
+        <button type="button" onClick={onCancel}>Cancel</button>
+      </form>
+    );
+    ```
+
+    ```tsx
+    // Without a native form element
+    const Form: FormComponent = ({ children, onSubmit, onCancel }) => (
+      <div>
+        {children}
+        <button type="button" onClick={onSubmit}>Submit</button>
+        <button type="button" onClick={onCancel}>Cancel</button>
+      </div>
+    );
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Stack
+
+Ordered list container that renders questionnaire nodes in sequence. It should handle spacing between items.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="children" type="ReactNode" required>
+      Render the node items provided by the renderer in order.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Header
+
+Layout wrapper for group nodes rendered with `control="header"`. Use it to style content that appears above a group body — for example, summary blocks or callout cards.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="linkId" type="string" required>
+      For debugging; render as a `data-link-id` attribute or ignore it.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the header content provided by the renderer.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Footer
+
+Layout wrapper for group nodes rendered with `control="footer"`. Use it to style content that appears below a group body — for example, summaries or navigation actions.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="linkId" type="string" required>
+      For debugging; render as a `data-link-id` attribute or ignore it.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the footer content provided by the renderer.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## DisplayRenderer
+
+Renderer for display-only nodes such as static text or markdown. This component must not expose any input controls; it is purely presentational.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="linkId" type="string" required>
+      For debugging; render as a `data-link-id` attribute or ignore it.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the display text or markup provided by the renderer.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## InputGroup
+
+Layout wrapper for multi-part inputs such as quantity-and-unit or coding fields. Arrange children as a single logical field using a 12-column span system.
+
+<Note>
+  The total of all `spans` values should equal 12 to avoid gaps or wrapping. The renderer provides one span value per child; your component should not infer or default them.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="children" type="ReactNode" required>
+      Render each child input in order as a single grouped control.
+    </ParamField>
+    <ParamField path="spans" type="number[]" required>
+      Column widths in a 12-column system (for example, `[8, 4]` for a 2/3 + 1/3 split). One span per child.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Example">
+    ```tsx
+    const InputGroup: InputGroupComponent = ({ children, spans }) => {
+      const items = React.Children.toArray(children);
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: spans.map((s) => `${s}fr`).join(" ") }}>
+          {items}
+        </div>
+      );
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## TabContainer
+
+Tabbed panel layout for group nodes. Render the active panel and wire ARIA tab roles. Follow the WAI-ARIA tab pattern: `role="tablist"` on the container, `role="tab"` on each button with `id={buttonId}`, and `role="tabpanel"` on each panel with `id={panelId}`.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="items" type="TabItem[]" required>
+      Render each tab. Each `TabItem` has `token`, `label`, `buttonId`, `panelId`, and `content`.
+    </ParamField>
+    <ParamField path="value" type="number" required>
+      Active tab index. Show the selected panel and mark the corresponding tab button as active.
+    </ParamField>
+    <ParamField path="onChange" type="(index: number) => void" required>
+      Call when the user selects a different tab.
+    </ParamField>
+    <ParamField path="linkId" type="string" required>
+      For debugging; render as a `data-link-id` attribute or ignore it.
+    </ParamField>
+    <ParamField path="header" type="ReactNode">
+      Optional tab-set header content (often the group label).
+    </ParamField>
+    <ParamField path="errors" type="ReactNode">
+      Render validation content associated with the tab set when provided.
+    </ParamField>
+  </Accordion>
+  <Accordion title="TabItem fields">
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `token` | `string` | Stable identifier; safe as a React key. |
+    | `label` | `ReactNode` | Render as the tab button label. |
+    | `buttonId` | `string` | Apply as the tab button `id`; use in `aria-controls` on the panel. |
+    | `panelId` | `string` | Apply as the tab panel `id`; use in `aria-labelledby` on the panel. |
+    | `content` | `ReactNode` | Render as the panel content for this tab. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Table
+
+Tabular layout used by grid-style groups. Render headers from `columns` and rows from `rows`. Include a row header column for `row.content` values. When any row provides `onRemove`, render a trailing remove-action column for all rows.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="columns" type="TableColumn[]" required>
+      Render these column definitions as table headers.
+    </ParamField>
+    <ParamField path="rows" type="TableRow[]" required>
+      Render these row definitions, including optional row header content and cell content.
+    </ParamField>
+  </Accordion>
+  <Accordion title="TableColumn fields">
+    | Field | Type | Optional | Description |
+    |-------|------|----------|-------------|
+    | `token` | `string` | No | Stable column identifier; safe as a React key. |
+    | `content` | `ReactNode` | No | Render as the column header content. |
+    | `width` | `string` | Yes | Optional CSS width for the column. |
+    | `isLoading` | `boolean` | Yes | When `true`, render a loading indicator near the header. |
+    | `errors` | `ReactNode` | Yes | Render errors associated with this column header. |
+  </Accordion>
+  <Accordion title="TableRow and TableCell fields">
+    **TableRow**
+
+    | Field | Type | Optional | Description |
+    |-------|------|----------|-------------|
+    | `token` | `string` | No | Stable row identifier; safe as a React key. |
+    | `content` | `ReactNode` | Yes | Render as the row header content. |
+    | `cells` | `TableCell[]` | No | Render these cells aligned to columns. |
+    | `isLoading` | `boolean` | Yes | When `true`, render a loading indicator near the row. |
+    | `errors` | `ReactNode` | Yes | Render errors associated with this row. |
+    | `onRemove` | `() => void` | Yes | Call when the remove action is activated for this row. |
+    | `canRemove` | `boolean` | Yes | When `false`, render the remove action disabled. |
+
+    **TableCell**
+
+    | Field | Type | Optional | Description |
+    |-------|------|----------|-------------|
+    | `token` | `string` | No | Stable cell identifier; safe as a React key. |
+    | `content` | `ReactNode` | Yes | Render as the cell content. |
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `group.removeSection` | Label for the remove-row action |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Link
+
+General-purpose link for references and related actions surfaced by the renderer. Render as an anchor or equivalent control with standard link behavior.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="href" type="string" required>
+      Set as the anchor destination. The renderer passes a fully qualified or relative URL.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render this content inside the link; it may be plain text or richer markup.
+    </ParamField>
+    <ParamField path="target" type="string">
+      Set the anchor `target` attribute when provided (for example, `_blank` for a new tab).
+    </ParamField>
+    <ParamField path="rel" type="string">
+      Set the anchor `rel` attribute. When using `target="_blank"`, prefer `noopener noreferrer`.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## LanguageSelector
+
+Language-switching control surfaced through the `Form.languageSelector` slot. Render it as a compact selector — for example, a dropdown or menu button — and call `onChange` with the selected language code.
+
+<Note>
+  The `LanguageSelector` component does not receive an `id` prop. The renderer renders it and passes the result as the `languageSelector` ReactNode slot on your `Form` component — render it in your form header area to expose language switching to users.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="options" type="LanguageOption[]" required>
+      Render these language choices. Each entry has a `value` (language code) and a `label` (human-readable name).
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Currently selected language code.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the selected language code when the user changes the language.
+    </ParamField>
+  </Accordion>
+  <Accordion title="LanguageOption fields">
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `value` | `string` | Stable language code (for example, `en` or `es-ES`). |
+    | `label` | `string` | Human-readable language name shown in the selector. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Label
+
+Header block for questions and groups. It owns label layout (prefix, label text), the required marker, and optional help/legal/flyover slots. It also provides the `aria-labelledby` anchor for the associated control.
+
+<Note>
+  The `as` prop is a semantic hint — themes may render a `<div>` for all values, including `"legend"`. Do not assume fieldset/legend markup is required.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Apply to the label element so controls can reference it via `aria-labelledby`.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the primary label content for the question or group.
+    </ParamField>
+    <ParamField path="isExpanded" type="boolean" required>
+      Current expanded state for collapsible items. Use it to display the correct expand/collapse affordance.
+    </ParamField>
+    <ParamField path="prefix" type="ReactNode">
+      Optional prefix content (for example, a question number).
+    </ParamField>
+    <ParamField path="shortText" type="string">
+      Optional compact label text for narrow layouts.
+    </ParamField>
+    <ParamField path="supportHyperlinks" type="Hyperlink[]">
+      Optional support links associated with the item. Each `Hyperlink` has `href` and optional `label`.
+    </ParamField>
+    <ParamField path="media" type="Attachment">
+      Optional media attachment rendered near the label text.
+    </ParamField>
+    <ParamField path="onToggleExpanded" type="() => void">
+      Toggle handler for collapsible items. Render an expand/collapse affordance when provided.
+    </ParamField>
+    <ParamField path="htmlFor" type="string">
+      Forward to the label element to connect it to the primary control.
+    </ParamField>
+    <ParamField path="required" type="boolean">
+      When `true`, display a visual required indicator near the label.
+    </ParamField>
+    <ParamField path="help" type="ReactNode">
+      Render the help slot content next to or beneath the label.
+    </ParamField>
+    <ParamField path="legal" type="ReactNode">
+      Render the legal slot content within the header layout.
+    </ParamField>
+    <ParamField path="flyover" type="ReactNode">
+      Render the flyover slot content within the header layout.
+    </ParamField>
+    <ParamField path="as" type="'legend' | 'label' | 'text'">
+      Semantic hint for the label role. Themes may render a `div` for all values.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `collapsible.expand` | Label for the expand action |
+    | `collapsible.collapse` | Label for the collapse action |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Help
+
+Short help text associated with a question or group label. Usually rendered near the label and referenced by the control via `aria-describedby`.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Apply as the element `id` so the associated control can reference it via `aria-describedby`.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the help content near the label or input.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `aria.help` | Accessible label for help trigger/content controls |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Legal
+
+Legal or consent content tied to a question or group node. May be inline text or a trigger that reveals additional detail. Keep the content accessible regardless of how you present it.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Apply to the element that contains or references the legal text so other components can target it via `aria-describedby`.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the legal text or markup provided by the renderer.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `aria.legal` | Accessible label for legal trigger/content controls |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Flyover
+
+Supplementary context for a node, often presented as a tooltip or popover. Keep it discoverable from the header and reachable via `aria-describedby`.
+
+<Note>
+  Legal and flyover content is not included in `ariaDescribedBy` by default. Ensure these controls remain accessible through your layout — do not rely solely on `aria-describedby` propagation.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Apply to the element that holds or is referenced by the flyover content so inputs can point to it via `aria-describedby`.
+    </ParamField>
+    <ParamField path="children" type="ReactNode" required>
+      Render the informational content provided by the renderer.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Recommended translation strings">
+    | Path | Text |
+    |------|------|
+    | `aria.flyover` | Accessible label for flyover trigger/content controls |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Errors
+
+Inline list of validation messages for a control, answer, or the form as a whole. Keep each message distinct and close to the related input or summary area.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Apply as the container `id` so inputs can reference it via `aria-describedby`.
+    </ParamField>
+    <ParamField path="messages" type="string[]" required>
+      Render each string as a distinct message line. Consider rendering as a list element for screen reader clarity.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  If you use `aria-live` or `role="alert"` to announce validation updates, prefer polite announcements (`aria-live="polite"`) to avoid repeated reads as the user types.
+</Tip>
+
+---
+
+## OptionsLoading
+
+Loading UI for option-backed controls while options are fetching. Use a spinner or skeleton where options would appear.
+
+<Note>
+  The renderer may render `OptionsLoading` in the question scaffold or selection table while options are loading. Option controls also receive `isLoading` directly. Implement only one loading indicator per control to avoid duplication.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="isLoading" type="boolean" required>
+      When `true`, show a loading indicator instead of options.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>

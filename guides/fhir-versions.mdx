@@ -1,0 +1,138 @@
+---
+title: "FHIR R4 and R5 support in Formbox Renderer"
+description: "Use fhirVersion to select R4 or R5 parsing, get compile-time type safety with QuestionnaireOf, and understand what R4Adapter and R5Adapter handle."
+---
+
+Formbox Renderer supports both HL7® FHIR® R4 and R5. The `fhirVersion` prop tells the renderer which version to use for parsing questionnaires, building responses, evaluating FHIRPath expressions, and selecting the default terminology server. You can use either version in the same application — just pass the correct `fhirVersion` to each renderer instance.
+
+## Setting the FHIR version
+
+Pass `"r4"` or `"r5"` to the `fhirVersion` prop. This prop is required.
+
+```tsx
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+
+// R5 form
+<Renderer
+  fhirVersion="r5"
+  questionnaire={r5Questionnaire}
+  theme={theme}
+/>
+
+// R4 form
+<Renderer
+  fhirVersion="r4"
+  questionnaire={r4Questionnaire}
+  theme={theme}
+/>
+```
+
+## TypeScript type helpers
+
+When you want compile-time type safety, use the versioned type helpers exported from `@formbox/renderer`. These map directly to the `fhir/r4` or `fhir/r5` packages based on the version parameter.
+
+```ts
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+// R5 types
+const questionnaire: QuestionnaireOf<"r5"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [
+    { linkId: "name", text: "Full name", type: "string" },
+    { linkId: "dob", text: "Date of birth", type: "date" },
+  ],
+};
+
+// R4 types
+const r4Questionnaire: QuestionnaireOf<"r4"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [
+    { linkId: "consent", text: "Consent to treatment", type: "boolean" },
+  ],
+};
+```
+
+<Tip>
+  Using `QuestionnaireOf<V>` catches mismatches at compile time. For example, TypeScript will error if you pass an R5 questionnaire where an R4 questionnaire is expected.
+</Tip>
+
+The same pattern applies to response types:
+
+```ts
+import type { QuestionnaireResponseOf } from "@formbox/renderer";
+
+function handleSubmit(response: QuestionnaireResponseOf<"r5">) {
+  // response is typed as fhir/r5 QuestionnaireResponse
+}
+```
+
+## Available versioned type aliases
+
+All versioned aliases follow the `*Of<V>` convention and are exported from `@formbox/renderer`:
+
+| Type | Description |
+|---|---|
+| `QuestionnaireOf<V>` | FHIR Questionnaire resource |
+| `QuestionnaireResponseOf<V>` | FHIR QuestionnaireResponse resource |
+| `QuestionnaireItemOf<V>` | Item within a Questionnaire |
+| `QuestionnaireResponseItemOf<V>` | Item within a QuestionnaireResponse |
+| `QuestionnaireResponseItemAnswerOf<V>` | Single answer within a response item |
+| `QuestionnaireItemAnswerOptionOf<V>` | Answer option on a questionnaire item |
+| `QuestionnaireItemEnableWhenOf<V>` | EnableWhen condition |
+| `QuestionnaireItemInitialOf<V>` | Initial value on a questionnaire item |
+| `OperationOutcomeIssueOf<V>` | Validation issue |
+| `CodingOf<V>` | FHIR Coding datatype |
+| `QuantityOf<V>` | FHIR Quantity datatype |
+| `AttachmentOf<V>` | FHIR Attachment datatype |
+| `ReferenceOf<V>` | FHIR Reference datatype |
+| `ExtensionOf<V>` | FHIR Extension datatype |
+| `ElementOf<V>` | FHIR Element base type |
+
+## R4Adapter and R5Adapter
+
+`R4Adapter` and `R5Adapter` are the internal classes that encapsulate all version-specific behavior. They are exported from `@formbox/renderer` for advanced use cases — for example, if you need to access the FHIRPath model or the default terminology server URL outside the renderer.
+
+```ts
+import { R4Adapter, R5Adapter } from "@formbox/renderer";
+
+const r4 = new R4Adapter();
+console.log(r4.getDefaultTerminologyServer()); // "https://tx.fhir.org/r4"
+
+const r5 = new R5Adapter();
+console.log(r5.getDefaultTerminologyServer()); // "https://tx.fhir.org/r5"
+```
+
+<Note>
+  You do not need to instantiate adapters yourself when using the `Renderer` component. The renderer selects the correct adapter automatically based on `fhirVersion`.
+</Note>
+
+### What adapters handle
+
+<CardGroup cols={2}>
+  <Card title="FHIRPath model" icon="code">
+    Each adapter provides the correct FHIRPath context model (`r4` or `r5`) so that expressions like `enableWhen`, `calculated`, and `constraint` evaluate against the right resource definitions.
+  </Card>
+  <Card title="Default terminology server" icon="server">
+    The adapter returns the version-appropriate default server URL used for ValueSet `$expand` when no `terminologyServerUrl` is provided.
+  </Card>
+  <Card title="Response metadata" icon="tags">
+    The adapter attaches version-specific internal metadata to `QuestionnaireResponseItem` objects so FHIRPath can traverse the response tree correctly.
+  </Card>
+  <Card title="Attachment handling" icon="paperclip">
+    Attachment size, content type, and data access differ between R4 and R5. Adapters abstract these differences so the renderer works with a single internal interface.
+  </Card>
+</CardGroup>
+
+## R4 vs R5 differences in practice
+
+Both versions are rendered identically from your application code — only the `fhirVersion` prop and the type parameter change. Version differences handled internally by the adapters include:
+
+- R4 does not have a dedicated `integer64` type; the adapter normalizes this.
+- The R4 adapter converts certain field names and extension URLs that diverged between versions.
+- FHIRPath expression evaluation uses the appropriate FHIR context model per version, ensuring that navigation paths like `QuestionnaireResponse.item` resolve correctly.
+
+If you are migrating from R4 to R5, update `fhirVersion` from `"r4"` to `"r5"` and verify that your Questionnaire and QuestionnaireResponse resources conform to R5 schemas. No other code changes are required.

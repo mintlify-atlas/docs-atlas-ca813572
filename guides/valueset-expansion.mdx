@@ -1,0 +1,90 @@
+---
+title: "ValueSet expansion in Formbox Renderer"
+description: "Learn how Formbox Renderer expands answerValueSet references via a terminology server, how to configure the server URL, and item-level overrides."
+---
+
+When a questionnaire item references a ValueSet via `answerValueSet`, Formbox Renderer fetches the expanded options by calling the FHIR `$expand` operation on a terminology server. The expanded codings populate the choice input automatically — no manual option list is required in the questionnaire.
+
+## Default terminology servers
+
+If you do not specify a `terminologyServerUrl`, the renderer uses a version-appropriate public server:
+
+| FHIR version | Default server |
+|---|---|
+| R4 | `https://tx.fhir.org/r4` |
+| R5 | `https://tx.fhir.org/r5` |
+
+These defaults are provided by `R4Adapter` and `R5Adapter` respectively. The renderer selects the correct adapter based on the `fhirVersion` prop you pass.
+
+<Note>
+  The public `tx.fhir.org` servers are suitable for development and testing. For production, point `terminologyServerUrl` at your own server to avoid latency, rate limits, and availability dependencies.
+</Note>
+
+## Configuring the terminology server
+
+Pass the base URL of your terminology server as `terminologyServerUrl`:
+
+```tsx
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+
+export function ClinicalForm({ questionnaire }) {
+  return (
+    <Renderer
+      fhirVersion="r4"
+      questionnaire={questionnaire}
+      theme={theme}
+      terminologyServerUrl="https://terminology.example.org/fhir"
+    />
+  );
+}
+```
+
+The renderer appends `/ValueSet/$expand` to the base URL when making expansion requests.
+
+## Questionnaire item with answerValueSet
+
+A questionnaire item uses `answerValueSet` to reference a canonical ValueSet URL. The renderer detects this field and triggers expansion automatically when the item is rendered.
+
+```json
+{
+  "linkId": "reason",
+  "text": "Reason for visit",
+  "type": "coding",
+  "answerValueSet": "http://snomed.info/sct?fhir_vs=isa/404684003"
+}
+```
+
+When this item renders, the renderer calls `$expand` on the canonical URL and populates the drop-down or radio group with the returned codings.
+
+## Item-level terminology server override
+
+Individual questionnaire items can specify a preferred terminology server using the `http://hl7.org/fhir/StructureDefinition/preferredTerminologyServer` extension. When this extension is present, the renderer uses that server for that item's expansion instead of the global `terminologyServerUrl`.
+
+```json
+{
+  "linkId": "medication",
+  "text": "Medication",
+  "type": "coding",
+  "answerValueSet": "http://example.org/fhir/ValueSet/medications",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/preferredTerminologyServer",
+      "valueUrl": "https://rx.example.org/fhir"
+    }
+  ]
+}
+```
+
+<Tip>
+  Use item-level `preferredTerminologyServer` when different ValueSets are hosted on different servers, or when a specific item needs a terminology server that requires authentication that your global server does not.
+</Tip>
+
+## Expansion caching
+
+The renderer caches expansion results in memory for the lifetime of the component. If the same canonical URL is referenced by multiple items, the expansion request is made only once.
+
+## Loading state
+
+While an expansion request is in flight, the renderer signals a loading state. Your theme should implement the `OptionsLoading` slot in the question scaffold to display a loading indicator, and handle `isLoading` in selection components to avoid showing a stale or empty options list.

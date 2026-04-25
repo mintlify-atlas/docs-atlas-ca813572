@@ -1,0 +1,180 @@
+---
+title: "Theme Contract: Full Interface Overview"
+description: "Complete reference for the Theme type from @formbox/theme. Lists all 36 required component slots grouped by category with usage guidance."
+---
+
+The `Theme` type exported from `@formbox/theme` is the contract between the Formbox Renderer and your UI layer. The renderer owns all form logic — state, validation, conditional visibility, and repeat behavior — while your theme owns every DOM element, every style, and every layout decision. Data flows through props alone; no global state or context magic is involved.
+
+A `Theme` object must supply a React component for every slot. With the exception of `customExtensions`, all fields are required. The easiest path to a complete theme is to spread an existing base theme and override only the components you want to change.
+
+```tsx
+import type { Theme } from "@formbox/theme";
+import { theme as baseTheme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+
+const theme: Theme = {
+  ...baseTheme,
+  Label: MyLabel,
+  TextInput: MyTextInput,
+};
+```
+
+## Install
+
+```bash
+# Type-only use in an app
+pnpm add -D @formbox/theme
+
+# Publishing a theme package
+pnpm add @formbox/theme
+```
+
+## Component slots
+
+The `Theme` interface has 36 component slots. All are required except `customExtensions`.
+
+### Text and number inputs
+
+These components handle free-form value entry. All inputs are controlled: callbacks receive parsed values, not DOM events.
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `TextInput` | `TextInputComponent` | Single-line text field for strings, URLs, and identifiers |
+| `TextArea` | `TextAreaComponent` | Multi-line field for longer narrative answers |
+| `NumberInput` | `NumberInputComponent` | Numeric field that parses to `number \| undefined` |
+| `DateInput` | `DateInputComponent` | Date-only field; value is a date string, typically `YYYY-MM-DD` |
+| `DateTimeInput` | `DateTimeInputComponent` | Combined date-and-time field; value is typically `YYYY-MM-DDTHH:mm` |
+| `TimeInput` | `TimeInputComponent` | Time-only field; value is typically `HH:mm` |
+| `SliderInput` | `SliderInputComponent` | Range control for bounded numeric values |
+| `SpinnerInput` | `SpinnerInputComponent` | Numeric stepper for small ranges |
+
+See [Text and number inputs](/api/theme-inputs) for full prop tables.
+
+### Selection inputs
+
+These components render option-backed controls. Options come from the renderer and are stable across renders.
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `SelectInput` | `SelectInputComponent` | Single-select dropdown |
+| `RadioButton` | `RadioButtonComponent` | Single radio element for table or custom layouts |
+| `RadioButtonList` | `RadioButtonListComponent` | Single-select radio group from an options list |
+| `Checkbox` | `CheckboxComponent` | Single checkbox for table or custom layouts |
+| `CheckboxList` | `CheckboxListComponent` | Multi-select checkbox group from an options list |
+| `MultiSelectInput` | `MultiSelectInputComponent` | Multi-select picker with chip display |
+| `OptionDisplay` | `OptionDisplayComponent` | Label wrapper for option content inside list and dropdown controls |
+| `CustomOptionForm` | `CustomOptionFormComponent` | Submit/cancel wrapper for custom "specify other" entry |
+
+See [Selection inputs](/api/theme-selection) for full prop tables.
+
+### File and signature inputs
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `FileInput` | `FileInputComponent` | Attachment picker; value is an `Attachment` object |
+| `SignatureInput` | `SignatureInputComponent` | Freehand drawing input for captured signatures |
+
+See [Selection inputs](/api/theme-selection) for the `FileInput` prop table.
+
+### Layout and structure
+
+These components control the visual container hierarchy of the form.
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `Form` | `FormComponent` | Outermost form wrapper; handles submit, cancel, and pagination |
+| `Stack` | `StackComponent` | Ordered list container for nodes |
+| `Header` | `HeaderComponent` | Content block for group nodes rendered with `control="header"` |
+| `Footer` | `FooterComponent` | Content block for group nodes rendered with `control="footer"` |
+| `DisplayRenderer` | `DisplayRendererComponent` | Display-only node for static text or markdown |
+| `InputGroup` | `InputGroupComponent` | 12-column span layout for multi-part inputs |
+| `TabContainer` | `TabContainerComponent` | Tabbed panel layout for group nodes |
+| `Table` | `TableComponent` | Grid layout for table-style groups |
+
+See [Layout and structure](/api/theme-layout) for full prop tables.
+
+### Labels and metadata
+
+These components display labels, help text, legal notices, and supplementary context around inputs.
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `Label` | `LabelComponent` | Question or group header: label text, required marker, help/legal/flyover slots |
+| `Help` | `HelpComponent` | Short help text referenced via `aria-describedby` |
+| `Legal` | `LegalComponent` | Legal or consent content |
+| `Flyover` | `FlyoverComponent` | Tooltip or popover for supplementary context |
+| `Errors` | `ErrorsComponent` | Inline validation message list |
+| `OptionsLoading` | `OptionsLoadingComponent` | Loading indicator while options are fetching |
+| `Link` | `LinkComponent` | General-purpose anchor for renderer-surfaced references |
+| `LanguageSelector` | `LanguageSelectorComponent` | Language-switching control surfaced by `Form` |
+
+See [Layout and structure](/api/theme-layout) for full prop tables.
+
+### Scaffolds
+
+Scaffolds compose the structural skeleton of each question and group: header, answers, errors, and nesting.
+
+| Slot | Type alias | Purpose |
+|------|-----------|---------|
+| `QuestionScaffold` | `QuestionScaffoldComponent` | Outer shell for a question node |
+| `AnswerList` | `AnswerListComponent` | Container for one or more answer rows |
+| `AnswerScaffold` | `AnswerScaffoldComponent` | Layout for a single answer row with control, remove, and errors |
+| `GroupList` | `GroupListComponent` | Wrapper for a repeating group's instance list |
+| `GroupScaffold` | `GroupScaffoldComponent` | Layout shell for one group instance |
+
+See [Scaffolds](/api/theme-scaffolds) for full prop tables and the composition diagram.
+
+### Extensions
+
+| Slot | Type | Purpose |
+|------|------|---------|
+| `customExtensions` | `CustomExtensionDefinitions` (optional) | Declare FHIR extension definitions for use in theme components |
+
+```ts
+import { type InferCustomExtensionValues, useCustomExtension } from "@formbox/theme";
+
+const customExtensions = {
+  formShared: {
+    target: "questionnaire",
+    url: "http://example.org/fhir/StructureDefinition/form-shared",
+    repeats: false,
+    extract: (extension: unknown) => (extension as { valueString: string }).valueString,
+  },
+} as const;
+
+declare module "@formbox/theme" {
+  interface CustomExtensionValueRegistry
+    extends InferCustomExtensionValues<typeof customExtensions> {}
+}
+
+// Inside a theme component:
+const formShared = useCustomExtension("formShared");
+```
+
+## Shared types
+
+These types are exported from `@formbox/theme` and used across many component props.
+
+| Type | Used by |
+|------|---------|
+| `OptionItem` | `SelectInput`, `RadioButtonList`, `CheckboxList`, `MultiSelectInput` |
+| `SelectedOptionItem` | `SelectInput`, `RadioButtonList`, `CheckboxList`, `MultiSelectInput` |
+| `ChoiceOrientation` | `RadioButtonList`, `CheckboxList` |
+| `Attachment` | `FileInput`, `OptionDisplay`, `Label` |
+| `Hyperlink` | `Label` |
+| `LanguageOption` | `LanguageSelector` |
+| `FormPagination` | `Form` |
+| `TabItem` | `TabContainer` |
+| `TableColumn`, `TableRow`, `TableCell` | `Table` |
+
+## Core conventions
+
+<Note>
+  All inputs are controlled. Callbacks receive parsed values, not DOM events. Never read from `event.target.value`; use the value passed directly to the callback.
+</Note>
+
+- Forward `ariaLabelledBy` and `ariaDescribedBy` verbatim to the primary focusable element. They are already space-joined id strings.
+- When `id` is provided, apply it to the primary focusable element.
+- When `disabled` is true, suppress all callbacks and prevent interaction.
+- When a prop is optional and `undefined`, treat it as not provided — do not render a placeholder.
+- Use `useStrings()` from `@formbox/theme` instead of hardcoding UI text to support multilingual questionnaires.

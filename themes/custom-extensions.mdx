@@ -1,0 +1,205 @@
+---
+title: "Consuming custom FHIR extensions in Formbox themes"
+description: "Declare FHIR extension definitions on your theme, resolve values at render time, and consume them in components with useCustomExtension()."
+---
+
+The custom extensions system lets you attach arbitrary FHIR extension definitions to your theme and consume the resolved values inside any theme component. The renderer reads the extension data from the questionnaire or item, runs your `extract` callback, and makes the result available through a React context hook — no prop drilling required.
+
+## How it works
+
+You declare extensions on `theme.customExtensions` as a record of definition objects. Each definition specifies where to look (`target`), the extension URL, whether to collect multiple values (`repeats`), and an `extract` callback that receives the raw extension and returns the value you want.
+
+At render time, the renderer locates matching extensions on the questionnaire or the current item, runs `extract` on each match, and provides the results through React context. Inside any theme component, call `useCustomExtension(key)` to read the resolved value for that key.
+
+## Defining extensions
+
+```ts
+import {
+  type InferCustomExtensionValues,
+  useCustomExtension,
+} from "@formbox/theme";
+
+const customExtensions = {
+  formShared: {
+    target: "questionnaire",
+    url: "http://example.org/fhir/StructureDefinition/form-shared",
+    repeats: false,
+    extract: (extension: unknown) =>
+      (extension as { valueString: string }).valueString,
+  },
+  itemTags: {
+    target: "item",
+    url: "http://example.org/fhir/StructureDefinition/item-tag",
+    repeats: true,
+    extract: (extension: unknown) =>
+      (extension as { valueCode: string }).valueCode,
+  },
+} as const;
+```
+
+### Definition fields
+
+| Field | Type | Description |
+|---|---|---|
+| `target` | `"questionnaire" \| "item"` | Where the renderer looks for matching extensions. |
+| `url` | `string` | The FHIR extension URL to match. |
+| `repeats` | `boolean` | When `true`, `extract` runs for each matching extension and the resolved value is a `ReadonlyArray`. When `false`, the resolved value is the single extracted value or `undefined`. |
+| `extract` | `(context: unknown) => unknown` | Called with the raw extension object. Return the value you want available in theme components. |
+
+## Module augmentation for TypeScript
+
+After declaring your extensions, augment the `CustomExtensionValueRegistry` interface so `useCustomExtension` returns fully typed values:
+
+```ts
+declare module "@formbox/theme" {
+  interface CustomExtensionValueRegistry
+    extends InferCustomExtensionValues<typeof customExtensions> {}
+}
+```
+
+`InferCustomExtensionValues` maps each key to the correct return type:
+- When `repeats: false`, the value type is `ReturnType<extract> | undefined`.
+- When `repeats: true`, the value type is `ReadonlyArray<ReturnType<extract>>`.
+
+## Attaching extensions to the theme
+
+Pass the `customExtensions` object as the `customExtensions` field on your theme:
+
+```tsx
+import type { Theme } from "@formbox/theme";
+import { theme as baseTheme } from "@formbox/hs-theme";
+
+export const theme: Theme = {
+  ...baseTheme,
+  customExtensions,
+};
+```
+
+## Consuming extensions in theme components
+
+Call `useCustomExtension(key)` inside any theme component to read the resolved value for a declared extension. The hook reads from the nearest React context provided by the renderer — questionnaire-level extensions are available everywhere, item-level extensions are scoped to the current item's render tree.
+
+```tsx
+import { useCustomExtension } from "@formbox/theme";
+
+export function Form({ children, onSubmit, title }: FormProperties) {
+  // Reads the questionnaire-level "formShared" extension
+  const formShared = useCustomExtension("formShared");
+
+  return (
+    <div data-shared={formShared}>
+      {title && <h1>{title}</h1>}
+      {children}
+      {onSubmit && (
+        <button type="button" onClick={onSubmit}>
+          Submit
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+```tsx
+import { useCustomExtension } from "@formbox/theme";
+
+export function QuestionScaffold({
+  children,
+  header,
+  errors,
+  isExpanded,
+}: QuestionScaffoldProperties) {
+  // Reads the item-level "itemTags" extension (array when repeats: true)
+  const tags = useCustomExtension("itemTags");
+
+  return (
+    <div data-tags={tags?.join(",")}>
+      {header}
+      {isExpanded && children}
+      {errors}
+    </div>
+  );
+}
+```
+
+## Complete example
+
+The following shows a self-contained setup: declaration, augmentation, theme assembly, and consumption.
+
+```ts
+// extensions.ts
+import {
+  type InferCustomExtensionValues,
+  useCustomExtension,
+} from "@formbox/theme";
+
+export const customExtensions = {
+  formShared: {
+    target: "questionnaire",
+    url: "http://example.org/fhir/StructureDefinition/form-shared",
+    repeats: false,
+    extract: (extension: unknown) =>
+      (extension as { valueString: string }).valueString,
+  },
+  itemTags: {
+    target: "item",
+    url: "http://example.org/fhir/StructureDefinition/item-tag",
+    repeats: true,
+    extract: (extension: unknown) =>
+      (extension as { valueCode: string }).valueCode,
+  },
+} as const;
+
+declare module "@formbox/theme" {
+  interface CustomExtensionValueRegistry
+    extends InferCustomExtensionValues<typeof customExtensions> {}
+}
+
+export { useCustomExtension };
+```
+
+```tsx
+// theme.ts
+import type { Theme } from "@formbox/theme";
+import { theme as baseTheme } from "@formbox/hs-theme";
+import { customExtensions } from "./extensions";
+
+export const theme: Theme = {
+  ...baseTheme,
+  customExtensions,
+};
+```
+
+```tsx
+// components/form.tsx
+import type { FormProperties } from "@formbox/theme";
+import { useCustomExtension } from "./extensions";
+
+export function Form({ children, onSubmit, title }: FormProperties) {
+  const formShared = useCustomExtension("formShared");
+  // formShared is typed as: string | undefined
+
+  return (
+    <div className={formShared === "true" ? "shared-form" : undefined}>
+      {title && <h1>{title}</h1>}
+      {children}
+      {onSubmit && (
+        <button type="button" onClick={onSubmit}>
+          Submit
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+<Note>
+`useCustomExtension` returns `undefined` when the key is not in the registry, when no matching extension exists in the current context, or when the extension is targeting `"item"` but you call the hook outside an item render tree. Handle `undefined` defensively.
+</Note>
+
+## Extension scoping
+
+- Extensions with `target: "questionnaire"` are resolved once from the root questionnaire resource and available in all theme components throughout the form.
+- Extensions with `target: "item"` are resolved from the current item and available only within that item's render subtree. Different items can resolve different values for the same key.
+
+When `useCustomExtension` is called, item-level values take precedence over questionnaire-level values if both exist for the same key.

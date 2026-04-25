@@ -1,0 +1,205 @@
+---
+title: "Installation and setup for Formbox Renderer"
+description: "Install @formbox/renderer, satisfy all peer dependencies, and choose a built-in theme to get Formbox Renderer running in your React app."
+---
+
+Formbox Renderer is distributed as two cooperating packages: the renderer core (`@formbox/renderer`) and a theme. You must install both to display a form. This page covers every dependency and setup option in detail.
+
+## Install the renderer and a theme
+
+<CodeGroup>
+
+```bash npm
+npm install @formbox/renderer @formbox/hs-theme
+```
+
+```bash yarn
+yarn add @formbox/renderer @formbox/hs-theme
+```
+
+```bash pnpm
+pnpm add @formbox/renderer @formbox/hs-theme
+```
+
+</CodeGroup>
+
+Replace `@formbox/hs-theme` with any other theme package listed in the [Available themes](#available-themes) section below.
+
+## Peer dependencies
+
+The renderer does not bundle its dependencies to avoid version conflicts and duplicate module instances in your app. Install the following packages alongside `@formbox/renderer`:
+
+| Package | Required version | Purpose |
+|---|---|---|
+| `react` | `>=18` | React runtime |
+| `react-dom` | `>=18` | React DOM renderer |
+| `mobx` | `^6.15.0` | Observable state management |
+| `mobx-react-lite` | `^4.1.1` | React bindings for MobX |
+| `mobx-utils` | `^6.1.1` | MobX utility helpers |
+| `classnames` | `^2.5.1` | Conditional class name utility |
+| `fhirpath` | `^4.6.0` | FHIRPath expression evaluator |
+| `@lhncbc/ucum-lhc` | `^7.1.3` | UCUM unit validation |
+
+<CodeGroup>
+
+```bash npm
+npm install react react-dom mobx mobx-react-lite mobx-utils classnames fhirpath @lhncbc/ucum-lhc
+```
+
+```bash yarn
+yarn add react react-dom mobx mobx-react-lite mobx-utils classnames fhirpath @lhncbc/ucum-lhc
+```
+
+```bash pnpm
+pnpm add react react-dom mobx mobx-react-lite mobx-utils classnames fhirpath @lhncbc/ucum-lhc
+```
+
+</CodeGroup>
+
+<Tip>
+  Your package manager will warn you about any missing peer dependencies when you install `@formbox/renderer`. Check the output for any packages your project has not yet installed.
+</Tip>
+
+<Warning>
+  MobX requires a single instance in your module graph. If you bundle multiple copies of `mobx` (for example, by having mismatched versions across packages), reactivity will break silently. Pin all MobX packages to the same major version.
+</Warning>
+
+## ES2023 output target
+
+The published packages target **ES2023**. Modern browsers and Node.js 18+ support this natively. If you need to support older environments, configure your bundler to transpile `node_modules/@formbox/*` and add any required polyfills.
+
+## Available themes
+
+Each theme exports a `theme` object and a compiled CSS file. You must import both.
+
+<Tabs>
+  <Tab title="hs-theme">
+    Health Samurai design system. The default choice for most projects.
+
+    <CodeGroup>
+
+    ```bash npm
+    npm install @formbox/hs-theme
+    ```
+
+    ```bash yarn
+    yarn add @formbox/hs-theme
+    ```
+
+    ```bash pnpm
+    pnpm add @formbox/hs-theme
+    ```
+
+    </CodeGroup>
+
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { theme } from "@formbox/hs-theme";
+    import "@formbox/hs-theme/style.css";
+
+    <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />;
+    ```
+  </Tab>
+  <Tab title="nshuk-theme">
+    NHS Digital Design System look and feel.
+
+    <CodeGroup>
+
+    ```bash npm
+    npm install @formbox/nshuk-theme
+    ```
+
+    ```bash yarn
+    yarn add @formbox/nshuk-theme
+    ```
+
+    ```bash pnpm
+    pnpm add @formbox/nshuk-theme
+    ```
+
+    </CodeGroup>
+
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { theme } from "@formbox/nshuk-theme";
+    import "@formbox/nshuk-theme/style.css";
+
+    <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />;
+    ```
+  </Tab>
+  <Tab title="antd-theme">
+    Built on Ant Design components.
+
+    <CodeGroup>
+
+    ```bash npm
+    npm install @formbox/antd-theme
+    ```
+
+    ```bash yarn
+    yarn add @formbox/antd-theme
+    ```
+
+    ```bash pnpm
+    pnpm add @formbox/antd-theme
+    ```
+
+    </CodeGroup>
+
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { theme } from "@formbox/antd-theme";
+    import "@formbox/antd-theme/style.css";
+
+    <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />;
+    ```
+  </Tab>
+  <Tab title="mantine-theme">
+    Built on Mantine components. Requires wrapping your app with the theme's `Provider`.
+
+    <CodeGroup>
+
+    ```bash npm
+    npm install @formbox/mantine-theme
+    ```
+
+    ```bash yarn
+    yarn add @formbox/mantine-theme
+    ```
+
+    ```bash pnpm
+    pnpm add @formbox/mantine-theme
+    ```
+
+    </CodeGroup>
+
+    ```tsx
+    import Renderer from "@formbox/renderer";
+    import { Provider, theme } from "@formbox/mantine-theme";
+    import "@formbox/mantine-theme/style.css";
+
+    <Provider>
+      <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+    </Provider>;
+    ```
+
+    <Note>
+      The `Provider` component sets up Mantine's theme context. Place it high enough in your component tree to wrap all `Renderer` instances that use the Mantine theme.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Requiring a theme and CSS
+
+The renderer will not display anything without a theme. There are two things you must always do:
+
+1. Pass a `theme` object to the `theme` prop.
+2. Import the theme's compiled CSS file (e.g. `@formbox/hs-theme/style.css`).
+
+If you skip the CSS import, the form will render with no visual styling. If you skip the `theme` prop, TypeScript will raise a compile error.
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Render your first questionnaire and capture a QuestionnaireResponse in five steps.
+</Card>

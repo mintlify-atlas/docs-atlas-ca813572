@@ -1,0 +1,174 @@
+---
+title: "Renderer props — @formbox/renderer API reference"
+description: "Complete reference for every prop accepted by the Renderer component from @formbox/renderer, including types, defaults, and usage examples."
+---
+
+The default export of `@formbox/renderer` is the `Renderer` component. It manages language state and translation strings internally, deriving both from the `questionnaire` and optional `defaultLanguage` prop. Pass a FHIR Questionnaire, a theme, and a FHIR version and the component handles the rest.
+
+```tsx
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+```
+
+## Props
+
+<ParamField path="questionnaire" type="QuestionnaireOf<V>" required>
+  The FHIR Questionnaire resource that drives the form. The type is version-scoped — pass an R4 Questionnaire when `fhirVersion` is `"r4"` and an R5 Questionnaire when `fhirVersion` is `"r5"`. TypeScript enforces this relationship automatically.
+</ParamField>
+
+<ParamField path="fhirVersion" type='"r4" | "r5"' required>
+  Selects the FHIR version used to parse the questionnaire and response. This prop acts as the type parameter `V` that flows through `QuestionnaireOf<V>` and `QuestionnaireResponseOf<V>`. Changing this prop at runtime recreates the internal form store.
+</ParamField>
+
+<ParamField path="theme" type="Theme" required>
+  A theme object that implements the Formbox theme contract. Themes supply every UI component the renderer renders into — inputs, labels, scaffolds, and so on. Import a ready-made theme such as `@formbox/hs-theme` or build your own against the `Theme` type from `@formbox/theme`.
+</ParamField>
+
+<ParamField path="defaultQuestionnaireResponse" type="QuestionnaireResponseOf<V>">
+  An optional initial `QuestionnaireResponse` that seeds the form state when the store is first created. Changing this prop after mount does not update the live form — use the `key` prop to reset the component and apply a new response.
+
+  <Warning>
+    Controlled `QuestionnaireResponse` updates are not yet supported. To apply a new response value after initial render, remount the component by changing its `key` prop.
+  </Warning>
+</ParamField>
+
+<ParamField path="defaultLanguage" type="string">
+  The BCP 47 language tag (e.g. `"en"`, `"fr"`, `"de-AT"`) to use when the component mounts. If omitted, the renderer falls back to the `language` field on the Questionnaire resource itself. The renderer resolves bundled translation strings from the primary language subtag.
+</ParamField>
+
+<ParamField path="onChange" type="(response: QuestionnaireResponseOf<V>) => void">
+  Called every time the internal questionnaire response state changes. Use this to synchronise the rendered response with external state, persist drafts, or preview results. The callback receives the full current `QuestionnaireResponse` object.
+</ParamField>
+
+<ParamField path="onSubmit" type="(response: QuestionnaireResponseOf<V>) => void">
+  Called when the user activates the form's submit action **and validation passes**. If validation fails, the renderer marks all fields as dirty so your theme can surface error messages; `onSubmit` is not called.
+</ParamField>
+
+<ParamField path="onLanguageChange" type="(language: string) => void">
+  Called when the user selects a different language through the language selector rendered by the theme. The argument is the BCP 47 tag of the newly selected language. Use this to persist the user's preference externally.
+</ParamField>
+
+<ParamField path="terminologyServerUrl" type="string">
+  Base URL of a FHIR terminology server used to expand ValueSets referenced by the questionnaire. When omitted, the renderer defaults to `https://tx.fhir.org/r4` for R4 questionnaires and `https://tx.fhir.org/r5` for R5 questionnaires.
+</ParamField>
+
+<ParamField path="launchContext" type="LaunchContext">
+  A map of named resources exposed to FHIRPath expressions via the `%launchContext` variable. The type is `Record<string, unknown>`. Use this to inject patient data, user context, or other runtime values referenced in `initialExpression`, `enableWhenExpression`, or other FHIRPath-based extensions.
+
+  ```tsx
+  launchContext={{
+    patient: { resourceType: "Patient", id: "pt-1", name: [{ text: "Jane Doe" }] },
+    user: { resourceType: "Practitioner", id: "prac-1" },
+  }}
+  ```
+</ParamField>
+
+<ParamField path="mode" type='"capture" | "display"'>
+  Controls whether the form renders in data-entry mode or read-only display mode. Defaults to `"capture"`. In `"display"` mode the theme receives read-only signals for all inputs and the submit action is hidden.
+
+  | Value | Behaviour |
+  |-------|-----------|
+  | `"capture"` | Editable inputs, validation, submit button |
+  | `"display"` | Read-only view of the current response |
+</ParamField>
+
+## Usage example
+
+<CodeGroup>
+
+```tsx Basic usage
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf } from "@formbox/renderer";
+
+const questionnaire: QuestionnaireOf<"r5"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [
+    { linkId: "name", text: "Full name", type: "string", required: true },
+    { linkId: "dob", text: "Date of birth", type: "date" },
+    { linkId: "consent", text: "Consent to treatment", type: "boolean" },
+  ],
+};
+
+export function MyForm() {
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      onSubmit={(response) => console.log("Submitted:", response)}
+      onChange={(response) => console.log("Changed:", response)}
+    />
+  );
+}
+```
+
+```tsx With launch context and pre-filled response
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+const questionnaire: QuestionnaireOf<"r4"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [{ linkId: "q1", text: "Patient name", type: "string" }],
+};
+
+const existingResponse: QuestionnaireResponseOf<"r4"> = {
+  resourceType: "QuestionnaireResponse",
+  status: "in-progress",
+  item: [{ linkId: "q1", answer: [{ valueString: "Jane Doe" }] }],
+};
+
+export function ReviewForm() {
+  return (
+    <Renderer
+      fhirVersion="r4"
+      questionnaire={questionnaire}
+      theme={theme}
+      defaultQuestionnaireResponse={existingResponse}
+      terminologyServerUrl="https://terminology.example.com"
+      launchContext={{ patient: { resourceType: "Patient", id: "pt-123" } }}
+      mode="capture"
+      onSubmit={(response) => save(response)}
+    />
+  );
+}
+```
+
+```tsx Reset on new response (using key)
+import { useState } from "react";
+import Renderer from "@formbox/renderer";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+export function ResettableForm({ questionnaire, response }: {
+  questionnaire: QuestionnaireOf<"r5">;
+  response: QuestionnaireResponseOf<"r5"> | undefined;
+}) {
+  // Change key whenever you want to apply a fresh response
+  const [resetKey, setResetKey] = useState(0);
+
+  return (
+    <Renderer
+      key={resetKey}
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      defaultQuestionnaireResponse={response}
+      onSubmit={(r) => console.log(r)}
+    />
+  );
+}
+```
+
+</CodeGroup>
+
+<Note>
+  The `Renderer` component is uncontrolled with respect to language. If you need to manage language externally — for example, to sync it with a global i18n context — use the [Controlled Renderer](/api/controlled-renderer) instead.
+</Note>

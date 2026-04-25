@@ -1,0 +1,215 @@
+---
+title: "Controlled Renderer — @formbox/renderer/controlled"
+description: "API reference for the controlled Renderer export, where language and translation strings are managed by the caller rather than internally by the component."
+---
+
+The controlled `Renderer` is exported from `@formbox/renderer/controlled`. It accepts `language` and `strings` as explicit props instead of managing them internally. Use the controlled variant when you need to synchronise the renderer's language with an external source — a global i18n context, a URL parameter, or a user preference stored elsewhere.
+
+```tsx
+import Renderer from "@formbox/renderer/controlled";
+import en from "@formbox/strings/en";
+```
+
+<Note>
+  Controlled `QuestionnaireResponse` updates are not yet supported. If you need to apply a new response value after initial render, remount the component by changing its `key` prop.
+</Note>
+
+## How it differs from the default Renderer
+
+The default `Renderer` from `@formbox/renderer` keeps `language` in local React state and auto-resolves the matching `Strings` bundle from the built-in translations. The controlled `Renderer` removes that internal state — `language` and `strings` become props that you supply and update.
+
+| Prop | Default Renderer | Controlled Renderer |
+|------|-----------------|---------------------|
+| `language` | Derived from `defaultLanguage` or questionnaire | Explicit prop you control |
+| `strings` | Resolved automatically from bundled translations | Required prop you provide |
+| `defaultLanguage` | Optional seed for internal state | **Not present** |
+
+## Props
+
+<ParamField path="questionnaire" type="QuestionnaireOf<V>" required>
+  The FHIR Questionnaire resource that drives the form. Version-scoped: an R4 Questionnaire when `fhirVersion` is `"r4"`, an R5 Questionnaire when `fhirVersion` is `"r5"`.
+</ParamField>
+
+<ParamField path="fhirVersion" type='"r4" | "r5"' required>
+  Selects the FHIR version used to parse the questionnaire and response. Changing this prop at runtime recreates the internal form store.
+</ParamField>
+
+<ParamField path="theme" type="Theme" required>
+  A theme object that implements the Formbox theme contract. Import a ready-made theme or build your own.
+</ParamField>
+
+<ParamField path="strings" type="Strings" required>
+  The full set of UI strings used by the renderer for labels, validation messages, ARIA text, and other copy. Import a pre-built locale bundle or supply your own object that satisfies the `Strings` type from `@formbox/theme`.
+
+  ```ts
+  import en from "@formbox/strings/en";
+  import fr from "@formbox/strings/fr";
+  ```
+
+  <Tip>
+    If you only need a subset of strings overridden, spread your overrides on top of an existing locale: `{ ...en, form: { ...en.form, submit: "Send" } }`.
+  </Tip>
+</ParamField>
+
+<ParamField path="language" type="string | undefined">
+  The BCP 47 language tag currently active (e.g. `"en"`, `"fr"`, `"de-AT"`). The renderer uses this value to resolve locale-dependent display text from the questionnaire's translations. Pass `undefined` to use the questionnaire's own `language` field as a fallback.
+
+  Updating this prop does **not** recreate the form store — the renderer applies the change to the existing store reactively.
+</ParamField>
+
+<ParamField path="defaultQuestionnaireResponse" type="QuestionnaireResponseOf<V>">
+  An optional initial `QuestionnaireResponse` that seeds the form state when the store is created. Changing this prop after mount has no effect. Use the `key` prop to remount and apply a new response.
+</ParamField>
+
+<ParamField path="onChange" type="(response: QuestionnaireResponseOf<V>) => void">
+  Called every time the internal questionnaire response changes. Receives the full current `QuestionnaireResponse` object.
+</ParamField>
+
+<ParamField path="onSubmit" type="(response: QuestionnaireResponseOf<V>) => void">
+  Called when the user submits the form **and all validation passes**. If validation fails the form marks all fields dirty so the theme can display errors; this callback is not called.
+</ParamField>
+
+<ParamField path="onLanguageChange" type="(language: string) => void">
+  Called when the user selects a different language through the language selector. Receives the BCP 47 tag of the newly chosen language. Use this to update the `language` prop and swap the `strings` bundle in your parent component.
+</ParamField>
+
+<ParamField path="terminologyServerUrl" type="string">
+  Base URL of a FHIR terminology server used to expand ValueSets. Defaults to `https://tx.fhir.org/r4` for R4 and `https://tx.fhir.org/r5` for R5 when omitted.
+</ParamField>
+
+<ParamField path="launchContext" type="LaunchContext">
+  A `Record<string, unknown>` of named resources exposed to FHIRPath expressions via `%launchContext`. Updating this prop applies the new context reactively without rebuilding the form store.
+</ParamField>
+
+<ParamField path="mode" type='"capture" | "display"'>
+  Render mode. `"capture"` (default) renders editable inputs. `"display"` renders a read-only view of the response. Updating this prop applies the change reactively.
+</ParamField>
+
+## Usage example
+
+<CodeGroup>
+
+```tsx Basic controlled usage
+import { useState } from "react";
+import Renderer from "@formbox/renderer/controlled";
+import en from "@formbox/strings/en";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+const questionnaire: QuestionnaireOf<"r5"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [
+    { linkId: "name", text: "Full name", type: "string", required: true },
+    { linkId: "dob", text: "Date of birth", type: "date" },
+  ],
+};
+
+export function ControlledForm() {
+  const [response, setResponse] = useState<QuestionnaireResponseOf<"r5">>();
+
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      strings={en}
+      onChange={setResponse}
+      onSubmit={(r) => console.log("Submitted:", r)}
+    />
+  );
+}
+```
+
+```tsx With external language management
+import { useState } from "react";
+import Renderer from "@formbox/renderer/controlled";
+import en from "@formbox/strings/en";
+import fr from "@formbox/strings/fr";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf, Strings } from "@formbox/renderer";
+
+const STRINGS: Record<string, Strings> = { en, fr };
+
+const questionnaire: QuestionnaireOf<"r5"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [{ linkId: "q1", text: "Question", type: "string" }],
+};
+
+export function MultilingualForm() {
+  const [language, setLanguage] = useState("en");
+  const strings = STRINGS[language] ?? en;
+
+  return (
+    <Renderer
+      fhirVersion="r5"
+      questionnaire={questionnaire}
+      theme={theme}
+      language={language}
+      strings={strings}
+      onLanguageChange={setLanguage}
+      onSubmit={(r) => console.log(r)}
+    />
+  );
+}
+```
+
+```tsx Reset with key prop
+import { useState } from "react";
+import Renderer from "@formbox/renderer/controlled";
+import en from "@formbox/strings/en";
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+export function ResettableControlledForm({
+  questionnaire,
+  response,
+}: {
+  questionnaire: QuestionnaireOf<"r5">;
+  response: QuestionnaireResponseOf<"r5"> | undefined;
+}) {
+  const [key, setKey] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setKey((k) => k + 1)}>Reset form</button>
+      <Renderer
+        key={key}
+        fhirVersion="r5"
+        questionnaire={questionnaire}
+        theme={theme}
+        strings={en}
+        defaultQuestionnaireResponse={response}
+        onSubmit={(r) => console.log(r)}
+      />
+    </>
+  );
+}
+```
+
+</CodeGroup>
+
+## Strings type
+
+The `Strings` type from `@formbox/theme` is a deeply nested record covering every UI string the renderer needs. Key top-level sections include `form`, `errors`, `file`, `group`, `selection`, `pagination`, `validation`, and more.
+
+```ts
+import type { Strings } from "@formbox/renderer";
+
+const customStrings: Strings = {
+  ...en,
+  form: {
+    ...en.form,
+    submit: "Send response",
+    cancel: "Discard",
+  },
+};
+```
+
+<Warning>
+  The `Strings` type uses `PlaceholderString` for fields that contain interpolation slots such as `{minOccurs}` or `{maxSize}`. These must remain as literal template strings — the renderer substitutes values at runtime.
+</Warning>

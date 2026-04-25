@@ -1,0 +1,392 @@
+---
+title: "Theme Contract: Text and Number Input Components"
+description: "Prop reference for TextInput, TextArea, NumberInput, DateInput, DateTimeInput, TimeInput, SliderInput, and SpinnerInput theme slots."
+---
+
+The text and number input components handle all free-form value entry in a questionnaire. Each component is controlled: the renderer passes the current value and a callback; your component renders the UI and calls back with the new value whenever the user edits. Never read from `event.target` — use the value passed directly to the callback.
+
+All inputs receive `ariaLabelledBy` as a required prop and `ariaDescribedBy` as an optional one. Forward both verbatim to the focusable element's `aria-labelledby` and `aria-describedby` attributes. When `id` is provided, set it on the primary focusable element so the associated `Label` can target it.
+
+<Note>
+  Date, time, and datetime values are opaque strings. Return the value exactly as entered — do not normalize, reformat, or shift timezones.
+</Note>
+
+---
+
+## TextInput
+
+Single-line text field for short string answers, URLs, or identifiers. Render a standard `<input>` element and forward accessibility ids and placeholder.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the input element `id` so labels can target it via `htmlFor` or `aria-labelledby`.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Current input value. Render this string in the field. An empty string means an empty field.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the new string whenever the user edits the field.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Space-joined id string. Forward verbatim to `aria-labelledby` on the input element.
+    </ParamField>
+    <ParamField path="type" type="string">
+      Use as the HTML input `type` attribute. Defaults to `text` in most themes.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the input in a disabled state and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the input is empty.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Space-joined id string. Forward verbatim to `aria-describedby` on the input element.
+    </ParamField>
+    <ParamField path="inputMode" type="HTMLAttributes<Element>['inputMode']">
+      Apply to the `inputmode` attribute to influence virtual keyboard layout on mobile devices.
+    </ParamField>
+    <ParamField path="minLength" type="number">
+      Minimum character length constraint when provided.
+    </ParamField>
+    <ParamField path="maxLength" type="number">
+      Maximum character length constraint when provided.
+    </ParamField>
+  </Accordion>
+  <Accordion title="Example implementation">
+    ```tsx
+    import type { TextInputComponent } from "@formbox/theme";
+
+    const TextInput: TextInputComponent = ({
+      id,
+      type,
+      value,
+      onChange,
+      disabled,
+      placeholder,
+      ariaLabelledBy,
+      ariaDescribedBy,
+      inputMode,
+      minLength,
+      maxLength,
+    }) => (
+      <input
+        id={id}
+        type={type ?? "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        inputMode={inputMode}
+        minLength={minLength}
+        maxLength={maxLength}
+      />
+    );
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## TextArea
+
+Multi-line text field for longer narrative responses. Use a `<textarea>` or equivalent element.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the textarea `id` so labels can target it.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Current textarea value. An empty string means an empty field.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the new string whenever the user edits the text.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the textarea element.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the textarea disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the textarea is empty.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the textarea element.
+    </ParamField>
+    <ParamField path="inputMode" type="HTMLAttributes<Element>['inputMode']">
+      Apply to the `inputmode` attribute.
+    </ParamField>
+    <ParamField path="minLength" type="number">
+      Minimum character length constraint when provided.
+    </ParamField>
+    <ParamField path="maxLength" type="number">
+      Maximum character length constraint when provided.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## NumberInput
+
+Numeric text field for integer, decimal, and quantity values. Accept `undefined` when the field is empty.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="onChange" type="(value?: number) => void" required>
+      Call with the parsed number when the user edits, or `undefined` when the field is cleared.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the input element.
+    </ParamField>
+    <ParamField path="value" type="number">
+      Current value. When `undefined`, render an empty field.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the input disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the field is empty.
+    </ParamField>
+    <ParamField path="step" type="number | 'any'">
+      Input step value. Controls increments and decimal precision.
+    </ParamField>
+    <ParamField path="min" type="number">
+      Minimum allowed value.
+    </ParamField>
+    <ParamField path="max" type="number">
+      Maximum allowed value.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the input element.
+    </ParamField>
+    <ParamField path="unitLabel" type="string">
+      Render a static unit label alongside the input when provided (for example, `kg` or `mmHg`).
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## DateInput
+
+Date-only field for calendar values. The value is a date string, typically in `YYYY-MM-DD` format.
+
+<Warning>
+  Do not normalize or reformat the date string. Return it exactly as entered so the renderer can store it in the FHIR response unchanged.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Current date string value, typically `YYYY-MM-DD`.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the new date string whenever the user edits the field.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the focusable element.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the input disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the field is empty.
+    </ParamField>
+    <ParamField path="min" type="string">
+      Minimum allowed date value as a string.
+    </ParamField>
+    <ParamField path="max" type="string">
+      Maximum allowed date value as a string.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the focusable element.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## DateTimeInput
+
+Combined date-and-time field. The value is a datetime string, typically in `YYYY-MM-DDTHH:mm` format.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Current datetime string, typically `YYYY-MM-DDTHH:mm`.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the new datetime string whenever the user edits the field.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the focusable element.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the input disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the field is empty.
+    </ParamField>
+    <ParamField path="min" type="string">
+      Minimum allowed datetime value as a string.
+    </ParamField>
+    <ParamField path="max" type="string">
+      Maximum allowed datetime value as a string.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the focusable element.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## TimeInput
+
+Time-only field for hours and minutes. The value is a time string, typically in `HH:mm` format.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the input `id` so labels can target it.
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Current time string, typically `HH:mm`.
+    </ParamField>
+    <ParamField path="onChange" type="(value: string) => void" required>
+      Call with the new time string whenever the user edits the field.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the focusable element.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the input disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the field is empty.
+    </ParamField>
+    <ParamField path="min" type="string">
+      Minimum allowed time value as a string.
+    </ParamField>
+    <ParamField path="max" type="string">
+      Maximum allowed time value as a string.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the focusable element.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## SliderInput
+
+Range control for bounded numeric values. Show the current value and range bounds visually when available. Treat `undefined` as no selection (unset state), not zero.
+
+<Note>
+  `SliderInput` has no `id` prop in the type signature — use `ariaLabelledBy` and `ariaDescribedBy` to wire accessibility.
+</Note>
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="onChange" type="(value?: number) => void" required>
+      Call with the new numeric value whenever the slider moves, or `undefined` if the value is cleared.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the slider element.
+    </ParamField>
+    <ParamField path="value" type="number">
+      Current slider position. When `undefined`, represent an unset value.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the slider disabled and prevent interaction.
+    </ParamField>
+    <ParamField path="min" type="number">
+      Lower bound for the slider range.
+    </ParamField>
+    <ParamField path="max" type="number">
+      Upper bound for the slider range.
+    </ParamField>
+    <ParamField path="step" type="number">
+      Step increment for the slider.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the slider element.
+    </ParamField>
+    <ParamField path="lowerLabel" type="string">
+      Display this label near the minimum value marker when provided.
+    </ParamField>
+    <ParamField path="upperLabel" type="string">
+      Display this label near the maximum value marker when provided.
+    </ParamField>
+    <ParamField path="unitLabel" type="string">
+      Render a unit label alongside the current value when provided.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## SpinnerInput
+
+Numeric control with increment/decrement stepper affordances for small integer ranges. It should support typing a value, using step buttons, and enforcing min/max rules. Treat `undefined` as an empty (unset) field.
+
+<AccordionGroup>
+  <Accordion title="Props">
+    <ParamField path="id" type="string" required>
+      Set as the primary focusable element `id`.
+    </ParamField>
+    <ParamField path="onChange" type="(value?: number) => void" required>
+      Call with the new numeric value when the user edits or uses the stepper, or `undefined` when cleared.
+    </ParamField>
+    <ParamField path="ariaLabelledBy" type="string" required>
+      Forward verbatim to `aria-labelledby` on the focusable element.
+    </ParamField>
+    <ParamField path="value" type="number">
+      Current value. When `undefined`, render an empty field.
+    </ParamField>
+    <ParamField path="disabled" type="boolean">
+      When `true`, render the control disabled and suppress all callbacks.
+    </ParamField>
+    <ParamField path="min" type="number">
+      Lower bound for the value.
+    </ParamField>
+    <ParamField path="max" type="number">
+      Upper bound for the value.
+    </ParamField>
+    <ParamField path="step" type="number">
+      Step increment for the stepper buttons.
+    </ParamField>
+    <ParamField path="ariaDescribedBy" type="string">
+      Forward verbatim to `aria-describedby` on the focusable element.
+    </ParamField>
+    <ParamField path="placeholder" type="string">
+      Show this hint text when the field is empty.
+    </ParamField>
+    <ParamField path="unitLabel" type="string">
+      Render a unit label alongside the input when provided.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Accessibility notes
+
+- `ariaLabelledBy` and `ariaDescribedBy` are already space-joined strings. Attach them directly; do not split or re-join.
+- `ariaDescribedBy` references the rendered `Help` and `Errors` element `id`s. Keep those elements in the DOM when they are rendered.
+- For native inputs, use the `disabled` attribute. For custom widgets, set `aria-disabled="true"`, remove from the tab order with `tabIndex={-1}`, and ignore pointer and keyboard events.

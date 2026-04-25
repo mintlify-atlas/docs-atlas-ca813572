@@ -1,0 +1,198 @@
+---
+title: "Formbox Renderer custom themes — architecture overview"
+description: "How the Formbox Renderer theming system works: headless architecture, the Theme type, four built-in themes, and manual CSS import."
+---
+
+The Formbox Renderer is fully headless: every DOM element, layout decision, and style belongs to the theme. The renderer owns form logic — state, validation, conditional visibility, calculated expressions — and calls into your theme components to produce the actual UI. Swapping the theme changes everything the user sees without touching a line of form logic.
+
+## How the theme contract works
+
+A `Theme` is a plain TypeScript object mapping slot names to React components. The renderer imports that object, calls each component with strongly typed props, and never touches the DOM or sets a `className` or `style` attribute itself. If you want a different button, input, or label, you replace the component in the theme object.
+
+All inputs are **controlled**: callbacks receive parsed values, not DOM events. A `TextInput` receives an `onChange: (value: string) => void` callback. A `NumberInput` receives `onChange: (value?: number) => void`. The renderer manages state; the theme manages presentation.
+
+Theme components never receive `className` or `style` props from the renderer. Styling is entirely the theme's responsibility — use CSS modules, Linaria, Tailwind, a design system, or inline styles as you prefer.
+
+## Built-in themes
+
+Four production-ready themes ship with Formbox Renderer. Each is a separate npm package with its own stylesheet.
+
+<CardGroup cols={2}>
+  <Card title="@formbox/hs-theme" icon="palette">
+    The default HealthSamurai theme. Minimal, accessible styles with no external UI library dependency.
+  </Card>
+  <Card title="@formbox/nshuk-theme" icon="palette">
+    A theme built for NSHUK questionnaire workflows.
+  </Card>
+  <Card title="@formbox/antd-theme" icon="palette">
+    Wraps Ant Design components. Requires `antd` as a peer dependency.
+  </Card>
+  <Card title="@formbox/mantine-theme" icon="palette">
+    Wraps Mantine UI components. Requires `@mantine/core` as a peer dependency.
+  </Card>
+</CardGroup>
+
+Each theme package exports a `theme` object typed as `Theme` and a CSS file you must import manually:
+
+```tsx
+import { theme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+```
+
+<Note>
+Theme CSS is **not** injected automatically. Always import the stylesheet alongside the theme object, or the layout and tokens will be missing.
+</Note>
+
+## The Theme type
+
+`Theme` is exported from `@formbox/theme`. It is a record of 37 required component slots plus an optional `customExtensions` field. Every slot must be present — the type is strict and the TypeScript compiler will report missing slots.
+
+```ts
+import type { Theme } from "@formbox/theme";
+```
+
+The slots cover every UI primitive the renderer needs:
+
+<Accordion title="Input controls (9 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `TextInput` | Single-line text field |
+| `TextArea` | Multi-line text field |
+| `NumberInput` | Integer, decimal, and quantity values |
+| `DateInput` | Date-only picker |
+| `DateTimeInput` | Combined date and time picker |
+| `TimeInput` | Time-only picker |
+| `SliderInput` | Range slider for bounded numeric values |
+| `SpinnerInput` | Numeric stepper with increment/decrement |
+| `FileInput` | File attachment picker |
+
+</Accordion>
+
+<Accordion title="Selection controls (7 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `SelectInput` | Single-select dropdown |
+| `RadioButton` | Single radio input (used in grids and custom layouts) |
+| `RadioButtonList` | Option list rendered as radio buttons |
+| `Checkbox` | Single checkbox input |
+| `CheckboxList` | Multi-select option list rendered as checkboxes |
+| `MultiSelectInput` | Chip-and-picker multi-select |
+| `CustomOptionForm` | Layout wrapper for custom "specify other" option entry |
+
+</Accordion>
+
+<Accordion title="Structural scaffolds (6 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `QuestionScaffold` | Outer shell for a question node |
+| `AnswerList` | Container for one or more answer rows |
+| `AnswerScaffold` | Layout for a single answer row |
+| `GroupList` | Wrapper for a repeating group with add control |
+| `GroupScaffold` | Layout shell for a group instance |
+| `InputGroup` | Multi-part input layout (12-column span system) |
+
+</Accordion>
+
+<Accordion title="Header and metadata (6 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `Label` | Question/group header with required marker and help slots |
+| `Help` | Short help text near the label |
+| `Legal` | Legal or consent content |
+| `Flyover` | Tooltip or popover for supplementary context |
+| `OptionsLoading` | Loading indicator while options fetch |
+| `OptionDisplay` | Wrapper for option labels inside selection controls |
+
+</Accordion>
+
+<Accordion title="Layout and navigation (9 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `Form` | Outer questionnaire wrapper with submit/cancel/pagination |
+| `Stack` | Ordered list container for child nodes |
+| `Header` | Layout for header-type group nodes |
+| `Footer` | Layout for footer-type group nodes |
+| `DisplayRenderer` | Display-only node (static text/markdown) |
+| `TabContainer` | Tabbed group panels |
+| `Table` | Grid-style group layout |
+| `Link` | General-purpose link |
+| `LanguageSelector` | Language switcher control |
+
+</Accordion>
+
+<Accordion title="Additional controls (2 slots)">
+
+| Slot | Purpose |
+|---|---|
+| `SignatureInput` | Signature capture control using perfect-freehand |
+| `Errors` | Inline validation message list |
+
+</Accordion>
+
+## Renderer composition overview
+
+The renderer wraps your theme components in a predictable tree. You control layout within each component; the nesting shows where labels, errors, and actions appear relative to each other.
+
+**Typical question node:**
+
+```text
+QuestionScaffold
+  Label
+  AnswerList (or a single control)
+    AnswerScaffold (per answer)
+      control (TextInput / Select / etc.)
+      remove action (when onRemove is provided)
+      children (nested nodes)
+      errors (Errors)
+  Errors (question-level)
+```
+
+**Repeating group list:**
+
+```text
+GroupList
+  Label (only when the list has text)
+  GroupScaffold (per instance)
+    remove action (when onRemove is provided)
+    errors
+  add action (when onAdd is provided)
+```
+
+**Non-repeating group:**
+
+```text
+GroupScaffold
+  Label (when visible)
+  Stack (child nodes)
+  Errors
+```
+
+## Renderer guarantees
+
+- `id`, `ariaLabelledBy`, and `ariaDescribedBy` values are unique within a render and stable for a given node or answer.
+- `ariaDescribedBy` strings are already space-joined; forward them as-is.
+- Option tokens are stable across renders; tokens remain safe as React keys.
+- `label` and `children` props are ready-to-render `ReactNode` values — no further processing needed.
+- When a stored answer uses a legacy or custom option value, the renderer passes a disabled entry so the selection still renders correctly.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Building a theme" icon="brush" href="/themes/building-a-theme">
+    Implement the full Theme contract or extend an existing theme.
+  </Card>
+  <Card title="Custom extensions" icon="puzzle-piece" href="/themes/custom-extensions">
+    Declare FHIR extension definitions and consume them in theme components.
+  </Card>
+  <Card title="Behavior contract" icon="shield-check" href="/themes/behavior">
+    Runtime rules every theme implementation must respect.
+  </Card>
+  <Card title="Theme contract API" icon="code" href="/api/theme-overview">
+    Full prop reference for every slot in the Theme type.
+  </Card>
+</CardGroup>

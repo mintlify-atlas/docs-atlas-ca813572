@@ -1,0 +1,79 @@
+---
+title: "Introduction to Formbox Renderer"
+description: "Formbox Renderer is a headless React library for FHIR Questionnaires. It handles form logic while your theme controls all markup and styles."
+---
+
+Formbox Renderer turns HL7® FHIR® Questionnaire resources into fully interactive React forms. It owns all form logic — state management, conditional visibility, calculated expressions, validation, ValueSet expansion, and repeating groups — while delegating every DOM element and style decision to a theme object you supply. You choose the look; the renderer handles the behaviour.
+
+## How it works
+
+The renderer is built around two layers:
+
+- **Renderer core** (`@formbox/renderer`): A React component backed by a MobX store tree. It reads a FHIR Questionnaire, builds an internal node graph, evaluates FHIRPath expressions, and re-renders reactively as users fill in answers.
+- **Theme contract** (`@formbox/theme`): A typed interface that maps every visual slot — inputs, labels, scaffolds, error displays — to React components you provide. The renderer calls your components; your components own the markup and styles.
+
+This separation means you can swap themes, upgrade the renderer, or implement a completely custom design system without touching form logic.
+
+<Note>
+  The renderer is headless. It does not render any HTML elements directly. You must pass a `theme` object and import its CSS — without a theme, nothing is displayed.
+</Note>
+
+## Key capabilities
+
+<CardGroup cols={2}>
+  <Card title="FHIR R4 and R5" icon="hospital">
+    Renders Questionnaire and produces QuestionnaireResponse resources for both R4 and R5. Select the version with the `fhirVersion` prop.
+  </Card>
+  <Card title="SDC extensions" icon="layer-group">
+    Evaluates `enableWhen`, calculated values, initial expressions, constraints, and `launchContext` bindings via FHIRPath.
+  </Card>
+  <Card title="Repeating groups and questions" icon="list">
+    Supports repeating groups (`repeats: true` on group items) and repeating questions, with configurable `minOccurs` and `maxOccurs`.
+  </Card>
+  <Card title="Validation" icon="circle-check">
+    Validates required fields, value constraints, and custom FHIRPath constraint expressions. Validation runs on submit; errors surface through your theme's error slots.
+  </Card>
+  <Card title="ValueSet expansion" icon="magnifying-glass">
+    Expands ValueSets through a terminology server. Defaults to `tx.fhir.org`; override with `terminologyServerUrl`.
+  </Card>
+  <Card title="Multilingual" icon="language">
+    Switches questionnaire language at runtime via `defaultLanguage` and `onLanguageChange`. Built-in UI strings are localizable through the theme `strings` contract.
+  </Card>
+</CardGroup>
+
+## Available themes
+
+All themes export a `theme` object and a compiled CSS file. Import both into your app.
+
+| Package | Description |
+|---|---|
+| `@formbox/hs-theme` | Health Samurai design system. The default choice for most projects. |
+| `@formbox/nshuk-theme` | NHS Digital Design System look and feel. |
+| `@formbox/antd-theme` | Built on Ant Design components. |
+| `@formbox/mantine-theme` | Built on Mantine components. Requires wrapping with `Provider`. |
+
+Each theme follows the same theme contract, so switching themes is a one-line change. You can also build your own theme by implementing the `@formbox/theme` contract — see the [Custom Themes](/themes/overview) section.
+
+## Controlled mode
+
+The default `Renderer` export manages language state internally. When you need to control language selection or pass pre-translated strings from outside, use the controlled renderer from `@formbox/renderer/controlled`. It accepts explicit `language` and `strings` props and exposes `onLanguageChange` so you can synchronise state with the rest of your app.
+
+## TypeScript support
+
+The renderer ships versioned FHIR type helpers. Import `QuestionnaireOf<"r4">` or `QuestionnaireOf<"r5">` to get compile-time checks on your questionnaire structure and response shapes.
+
+```ts
+import type { QuestionnaireOf, QuestionnaireResponseOf } from "@formbox/renderer";
+
+const questionnaire: QuestionnaireOf<"r5"> = {
+  resourceType: "Questionnaire",
+  status: "active",
+  item: [{ linkId: "name", text: "Full name", type: "string" }],
+};
+```
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Install the renderer and render your first FHIR Questionnaire in minutes.
+</Card>

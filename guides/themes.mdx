@@ -1,0 +1,194 @@
+---
+title: "Using built-in themes with Formbox Renderer"
+description: "Install and configure hs-theme, nshuk-theme, antd-theme, or mantine-theme. Learn how to import CSS and combine themes for custom overrides."
+---
+
+Formbox Renderer is headless: it owns all form logic but renders nothing to the DOM itself. Every visual element — labels, inputs, error messages, buttons — comes from a **theme object** you provide. Four ready-made themes are published so you can start rendering immediately without building your own.
+
+## How themes work
+
+Every theme package exports two things:
+
+- A `theme` object that implements the `Theme` contract from `@formbox/theme`.
+- A compiled CSS file you must import explicitly.
+
+The renderer never imports CSS on its own. If you skip the CSS import, the form will render structurally correct HTML but with no styling.
+
+<Note>
+  The `theme` prop is required. The renderer will not accept `undefined`.
+</Note>
+
+## Available themes
+
+<CardGroup cols={2}>
+  <Card title="@formbox/hs-theme" icon="heart-pulse">
+    Health Samurai house style. A clean, clinical look built with Linaria.
+  </Card>
+  <Card title="@formbox/nshuk-theme" icon="shield-halved">
+    NHS Design System look. Follows NHS UK frontend guidelines using `nhsuk-frontend`.
+  </Card>
+  <Card title="@formbox/antd-theme" icon="layer-group">
+    Ant Design components. Uses `antd` and `@ant-design/icons`.
+  </Card>
+  <Card title="@formbox/mantine-theme" icon="wand-magic-sparkles">
+    Mantine components. Uses `@mantine/core` and requires a `Provider` wrapper.
+  </Card>
+</CardGroup>
+
+## Installation and usage
+
+<Tabs>
+  <Tab title="hs-theme">
+    <Steps>
+      <Step title="Install the package">
+        <CodeGroup>
+          ```bash npm
+          npm install @formbox/renderer @formbox/hs-theme
+          ```
+          ```bash pnpm
+          pnpm add @formbox/renderer @formbox/hs-theme
+          ```
+          ```bash yarn
+          yarn add @formbox/renderer @formbox/hs-theme
+          ```
+        </CodeGroup>
+      </Step>
+      <Step title="Import the theme and CSS, then pass to the renderer">
+        ```tsx
+        import Renderer from "@formbox/renderer";
+        import { theme } from "@formbox/hs-theme";
+        import "@formbox/hs-theme/style.css";
+
+        export function PatientForm({ questionnaire }) {
+          return (
+            <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+          );
+        }
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="nshuk-theme">
+    <Steps>
+      <Step title="Install the package">
+        <CodeGroup>
+          ```bash npm
+          npm install @formbox/renderer @formbox/nshuk-theme
+          ```
+          ```bash pnpm
+          pnpm add @formbox/renderer @formbox/nshuk-theme
+          ```
+          ```bash yarn
+          yarn add @formbox/renderer @formbox/nshuk-theme
+          ```
+        </CodeGroup>
+      </Step>
+      <Step title="Import the theme and CSS, then pass to the renderer">
+        ```tsx
+        import Renderer from "@formbox/renderer";
+        import { theme } from "@formbox/nshuk-theme";
+        import "@formbox/nshuk-theme/style.css";
+
+        export function PatientForm({ questionnaire }) {
+          return (
+            <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+          );
+        }
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="antd-theme">
+    <Steps>
+      <Step title="Install the package">
+        <CodeGroup>
+          ```bash npm
+          npm install @formbox/renderer @formbox/antd-theme
+          ```
+          ```bash pnpm
+          pnpm add @formbox/renderer @formbox/antd-theme
+          ```
+          ```bash yarn
+          yarn add @formbox/renderer @formbox/antd-theme
+          ```
+        </CodeGroup>
+      </Step>
+      <Step title="Import the theme and CSS, then pass to the renderer">
+        ```tsx
+        import Renderer from "@formbox/renderer";
+        import { theme } from "@formbox/antd-theme";
+        import "@formbox/antd-theme/style.css";
+
+        export function PatientForm({ questionnaire }) {
+          return (
+            <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+          );
+        }
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="mantine-theme">
+    <Steps>
+      <Step title="Install the package">
+        <CodeGroup>
+          ```bash npm
+          npm install @formbox/renderer @formbox/mantine-theme
+          ```
+          ```bash pnpm
+          pnpm add @formbox/renderer @formbox/mantine-theme
+          ```
+          ```bash yarn
+          yarn add @formbox/renderer @formbox/mantine-theme
+          ```
+        </CodeGroup>
+      </Step>
+      <Step title="Wrap the renderer with the Mantine Provider">
+        The Mantine theme requires a `Provider` component wrapping the renderer so Mantine's context is available to all theme components.
+
+        ```tsx
+        import Renderer from "@formbox/renderer";
+        import { Provider, theme } from "@formbox/mantine-theme";
+        import "@formbox/mantine-theme/style.css";
+
+        export function PatientForm({ questionnaire }) {
+          return (
+            <Provider>
+              <Renderer fhirVersion="r5" questionnaire={questionnaire} theme={theme} />
+            </Provider>
+          );
+        }
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+      Forgetting the `Provider` wrapper with the Mantine theme will cause runtime errors because Mantine components depend on context values that `Provider` supplies.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Mixing and matching components
+
+Because `theme` is a plain object, you can spread any base theme and override individual components. This lets you adopt a theme's defaults while substituting only the parts you need to change.
+
+```tsx
+import type { Theme } from "@formbox/theme";
+import { theme as baseTheme } from "@formbox/hs-theme";
+import "@formbox/hs-theme/style.css";
+import { MyLabel } from "./my-label";
+import { MySubmitButton } from "./my-submit-button";
+
+const theme: Theme = {
+  ...baseTheme,
+  Label: MyLabel,
+};
+```
+
+<Tip>
+  Spreading a base theme and overriding a few components is the fastest path to a custom look. You get all working components immediately and can replace them incrementally.
+</Tip>
+
+## Building a fully custom theme
+
+If none of the built-in themes fit your design system, you can implement the `Theme` contract from scratch. See [Building a theme](/themes/building-a-theme) for a step-by-step guide.

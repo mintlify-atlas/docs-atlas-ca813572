@@ -1,0 +1,104 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Formbox Renderer",
+  "projectDescription": "A headless React renderer for HL7® FHIR® R4 and R5 Questionnaires with a pluggable theme system.",
+  "theme": "luma",
+  "primaryColor": "#2563EB",
+  "lightColor": "#EFF6FF",
+  "darkColor": "#1E3A8A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/themes",
+              "guides/controlled-mode",
+              "guides/validation-and-submit",
+              "guides/valueset-expansion",
+              "guides/localization",
+              "guides/fhir-versions"
+            ]
+          },
+          {
+            "group": "Custom Themes",
+            "pages": [
+              "themes/overview",
+              "themes/building-a-theme",
+              "themes/custom-extensions",
+              "themes/behavior"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Renderer",
+            "pages": [
+              "api/renderer-props",
+              "api/controlled-renderer",
+              "api/types"
+            ]
+          },
+          {
+            "group": "Theme Contract",
+            "pages": [
+              "api/theme-overview",
+              "api/theme-inputs",
+              "api/theme-selection",
+              "api/theme-layout",
+              "api/theme-scaffolds"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Renders HL7® FHIR® R4 and R5 Questionnaires as interactive React forms",
+    "Headless architecture — bring your own theme and CSS",
+    "Pluggable theme system with built-in hs-theme, nshuk-theme, antd-theme, and mantine-theme",
+    "SDC (Structured Data Capture) support including enableWhen, calculated expressions, and launchContext",
+    "ValueSet expansion via configurable terminology server",
+    "Multilingual support via useStrings() and questionnaire language switching",
+    "Controlled and uncontrolled rendering modes",
+    "Full TypeScript support with versioned FHIR type helpers",
+    "MobX-powered reactive form state management",
+    "Pagination, repeating groups, and complex FHIR item types"
+  ],
+  "publicApiSurface": [
+    "Renderer (default export from @formbox/renderer)",
+    "Renderer (default export from @formbox/renderer/controlled)",
+    "RendererProperties<V>",
+    "QuestionnaireOf<V>",
+    "QuestionnaireResponseOf<V>",
+    "FhirVersion",
+    "LaunchContext",
+    "RenderMode",
+    "QuestionnaireUsageMode",
+    "Theme (from @formbox/theme)",
+    "Strings (from @formbox/theme)",
+    "useStrings()",
+    "useCustomExtension(key)",
+    "InferCustomExtensionValues<T>",
+    "CustomExtensionValueRegistry",
+    "R4Adapter",
+    "R5Adapter",
+    "theme (from @formbox/hs-theme)",
+    "theme (from @formbox/nshuk-theme)",
+    "theme (from @formbox/antd-theme)",
+    "theme, Provider (from @formbox/mantine-theme)"
+  ]
+}
